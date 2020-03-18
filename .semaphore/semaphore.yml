@@ -12,14 +12,3 @@ blocks:
           commands:
             - checkout
             - ls -lrt
-            - git rev-parse --short HEAD
-            - 'curl -LJO https://unified-agent.s3.amazonaws.com/wss-unified-agent-20.2.1.jar'
-            - pwd
-            - python attribution-calico-oss.py
-            - ls -lrt
-            - 'sh run.sh '
-      env_vars:
-        - name: UNAME
-          value: manojah
-        - name: PASS
-          value: tigera123
