@@ -20,12 +20,6 @@ spec:
     metadata:
       labels:
         k8s-app: {{include "nodeName" . }}
-      annotations:
-        # This, along with the CriticalAddonsOnly toleration below,
-        # marks the pod as a critical add-on, ensuring it gets
-        # priority scheduling and that its resources are reserved
-        # if it ever gets evicted.
-        scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
       nodeSelector:
         kubernetes.io/os: linux
@@ -56,9 +50,14 @@ spec:
         - name: upgrade-ipam
           image: {{.Values.cni.image}}:{{ .Values.cni.tag }}
           command: ["/opt/cni/bin/calico-ipam", "-upgrade"]
+          envFrom:
+          - configMapRef:
+              # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+              name: kubernetes-services-endpoint
+              optional: true
           env:
 {{- if .Values.bpf }}
-            # Overrides for kubernetes API server host/port.  Needed in BPF mode.
+            # Overrides for kubernetes API server host/port. Needed in BPF mode.
             - name: KUBERNETES_SERVICE_HOST
               valueFrom:
                 configMapKeyRef:
@@ -91,10 +90,15 @@ spec:
         # and CNI network config file on each node.
         - name: install-cni
           image: {{.Values.cni.image}}:{{ .Values.cni.tag }}
-          command: ["/install-cni.sh"]
+          command: ["/opt/cni/bin/install"]
+          envFrom:
+          - configMapRef:
+              # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+              name: kubernetes-services-endpoint
+              optional: true
           env:
 {{- if .Values.bpf }}
-            # Overrides for kubernetes API server host/port.  Needed in BPF mode.
+            # Overrides for kubernetes API server host/port. Needed in BPF mode.
             - name: KUBERNETES_SERVICE_HOST
               valueFrom:
                 configMapKeyRef:
@@ -184,14 +188,19 @@ spec:
           securityContext:
             privileged: true
       containers:
-        # Runs {{ include "nodeName" . }} container on each Kubernetes node.  This
+        # Runs {{ include "nodeName" . }} container on each Kubernetes node. This
         # container programs network policy and routes on each
         # host.
         - name: calico-node
           image: {{.Values.node.image}}:{{.Values.node.tag}}
+          envFrom:
+          - configMapRef:
+              # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+              name: kubernetes-services-endpoint
+              optional: true
           env:
 {{- if .Values.bpf }}
-            # Overrides for kubernetes API server host/port.  Needed in BPF mode.
+            # Overrides for kubernetes API server host/port. Needed in BPF mode.
             - name: KUBERNETES_SERVICE_HOST
               valueFrom:
                 configMapKeyRef:
@@ -275,11 +284,26 @@ spec:
             # Auto-detect the BGP IP address.
             - name: IP
               value: "autodetect"
-            # {{- if .Values.bpf -}} For best performance, disable {{- else -}} Enable {{- end -}} IPIP
+            # {{- if .Values.bpf }} For best performance, disable {{- else }} Enable {{- end }} IPIP
             - name: CALICO_IPV4POOL_IPIP
-              value: "{{- if .Values.bpf -}} Never {{- else -}} Always {{- end -}}"
+              value: "{{- if .Values.bpf -}} Never {{- else if .Values.vxlan -}} Never {{- else -}} Always {{- end -}}"
+            # Enable or Disable VXLAN on the default IP pool.
+            - name: CALICO_IPV4POOL_VXLAN
+              value: "{{- if .Values.vxlan -}} CrossSubnet {{- else -}} Never {{- end -}}"
             # Set MTU for tunnel device used if ipip is enabled
             - name: FELIX_IPINIPMTU
+              valueFrom:
+                configMapKeyRef:
+                  name: {{include "variant_name" . | lower}}-config
+                  key: veth_mtu
+            # Set MTU for the VXLAN tunnel device.
+            - name: FELIX_VXLANMTU
+              valueFrom:
+                configMapKeyRef:
+                  name: {{include "variant_name" . | lower}}-config
+                  key: veth_mtu
+            # Set MTU for the Wireguard tunnel device.
+            - name: FELIX_WIREGUARDMTU
               valueFrom:
                 configMapKeyRef:
                   name: {{include "variant_name" . | lower}}-config
@@ -305,6 +329,11 @@ spec:
             - name: CLUSTER_TYPE
               value: "k8s"
 {{- end }}
+{{- if and (eq .Values.network "calico") (.Values.vxlan) }}
+            # Disable AWS source-destination check on nodes.
+            - name: FELIX_AWSSRCDSTCHECK
+              value: Disable
+{{- end }}
             # The default IPv4 pool to create on startup if none exists. Pod IPs will be
             # chosen from this range. Changing this value after installation will have
             # no effect. This should fall within `--cluster-cidr`.
@@ -319,9 +348,6 @@ spec:
             # Disable IPv6 on Kubernetes.
             - name: FELIX_IPV6SUPPORT
               value: "false"
-            # Set Felix logging to "info"
-            - name: FELIX_LOGSEVERITYSCREEN
-              value: "info"
             - name: FELIX_HEALTHENABLED
               value: "true"
 {{- if .Values.node.env }}
@@ -337,19 +363,20 @@ spec:
               command:
               - /bin/calico-node
               - -felix-live
-{{- if and (eq .Values.network "calico") (not .Values.flannel_migration) }}
+{{- if and (eq .Values.network "calico") (not .Values.flannel_migration) (not .Values.vxlan) }}
               - -bird-live
 {{- end }}
             periodSeconds: 10
             initialDelaySeconds: 10
             failureThreshold: 6
+            timeoutSeconds: 10
           readinessProbe:
 {{- if eq .Values.network "calico" }}
             exec:
               command:
               - /bin/calico-node
               - -felix-ready
-{{- if not .Values.flannel_migration }}
+{{- if and (not .Values.flannel_migration) (not .Values.vxlan) }}
               - -bird-ready
 {{- end }}
 {{- else if eq .Values.network "flannel" }}
@@ -364,7 +391,12 @@ spec:
               - -felix-ready
 {{- end }}
             periodSeconds: 10
+            timeoutSeconds: 10
           volumeMounts:
+            # For maintaining CNI plugin API credentials.
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+              readOnly: false
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
@@ -383,13 +415,16 @@ spec:
 {{- end }}
             - name: policysync
               mountPath: /var/run/nodeagent
-{{- if .Values.bpf }}
-            # We need to mount the BPF filesystem at /sys/fs/bpf and we need that mount to persist
-            # even if {{ include "nodeName" . }} is restarted.
+            # For eBPF mode, we need to be able to mount the BPF filesystem at /sys/fs/bpf so we mount in the
+            # parent directory.
             - name: sysfs
               mountPath: /sys/fs/
+              # Bidirectional means that, if we mount the BPF filesystem at /sys/fs/bpf it will propagate to the host.
+              # If the host is known to mount that filesystem already then Bidirectional can be omitted.
               mountPropagation: Bidirectional
-{{- end }}
+            - name: cni-log-dir
+              mountPath: /var/log/calico/cni
+              readOnly: true
 {{- if eq .Values.network "flannel" }}
   {{- if eq .Values.datastore "kubernetes" }}
         # This container runs flannel using the kube-subnet-mgr backend
@@ -519,12 +554,10 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
-{{- if .Values.bpf }}
         - name: sysfs
           hostPath:
             path: /sys/fs/
             type: DirectoryOrCreate
-{{- end }}
 {{- if and (eq .Values.network "flannel") (eq .Values.datastore "kubernetes") }}
         # Used by flannel.
         - name: flannel-cfg
@@ -546,6 +579,10 @@ spec:
         - name: cni-net-dir
           hostPath:
             path: /etc/cni/net.d
+        # Used to access CNI logs.
+        - name: cni-log-dir
+          hostPath:
+            path: /var/log/calico/cni
 {{- if eq .Values.datastore "etcd" }}
         # Mount in the etcd TLS secrets with mode 400.
         # See https://kubernetes.io/docs/concepts/configuration/secret/
@@ -607,6 +644,12 @@ rules:
       - pods
       - nodes
       - namespaces
+    verbs:
+      - get
+  # Pod CIDR auto-detection on kubeadm needs access to config maps.
+  - apiGroups: [""]
+    resources:
+      - configmaps
     verbs:
       - get
 {{- end }}

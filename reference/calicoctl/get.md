@@ -25,7 +25,7 @@ command.
 ```
 Usage:
   calicoctl get ( (<KIND> [<NAME...>]) |
-                --filename=<FILENAME>)
+                --filename=<FILENAME>) [--recursive] [--skip-empty]
                 [--output=<OUTPUT>] [--config=<CONFIG>] [--namespace=<NS>] [--all-namespaces]
 
 Examples:
@@ -39,7 +39,12 @@ Examples:
 Options:
   -h --help                    Show this screen.
   -f --filename=<FILENAME>     Filename to use to get the resource.  If set to
-                               "-" loads from stdin.
+                               "-" loads from stdin. If filename is a directory, this command is
+                               invoked for each .json .yaml and .yml file within that directory,
+                               terminating after the first failure.
+  -R --recursive               Process the filename specified in -f or --filename recursively.
+     --skip-empty              Do not error if any files or directory specified using -f or --filename contain no
+                               data.
   -o --output=<OUTPUT FORMAT>  Output format.  One of: yaml, json, ps, wide,
                                custom-columns=..., go-template=...,
                                go-template-file=...   [Default: ps]
@@ -49,11 +54,12 @@ Options:
   -n --namespace=<NS>          Namespace of the resource.
                                Only applicable to NetworkPolicy and WorkloadEndpoint.
                                Uses the default namespace if not specified.
-  -a --all-namespaces          If present, list the requested object(s) across
+  -A --all-namespaces          If present, list the requested object(s) across
                                all namespaces.
   --export                     If present, returns the requested object(s) stripped of
                                cluster-specific information. This flag will be ignored
                                if <NAME> is not specified.
+  --context=<context>          The name of the kubeconfig context to use.
 
 Description:
   The get command is used to display a set of resources by filename or stdin,
@@ -122,7 +128,7 @@ Description:
 -n --namespace=<NS>          Namespace of the resource.
                              Only applicable to NetworkPolicy, NetworkSet, and WorkloadEndpoint.
                              Uses the default namespace if not specified.
--a --all-namespaces          If present, list the requested object(s) across
+-A --all-namespaces          If present, list the requested object(s) across
                              all namespaces.
 --export                     If present, returns the requested object(s) stripped of
                              cluster-specific information. This flag will be ignored
@@ -259,7 +265,7 @@ endpoint1,eth0,
 
 ## See also
 
--  [Installing calicoctl]({{ site.baseurl }}/getting-started/calicoctl/install).
+-  [Installing calicoctl]({{ site.baseurl }}/getting-started/clis/calicoctl/install).
 -  [Resources]({{ site.baseurl }}/reference/resources/overview) for details on all valid resources, including file format
    and schema
 -  [NetworkPolicy]({{ site.baseurl }}/reference/resources/networkpolicy) for details on the {{site.prodname}} selector-based policy model

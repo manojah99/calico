@@ -13,7 +13,7 @@ section.
 
 > **Note**: This section provides full reference information for `calicoctl`. To learn
 > how to install and configure `calicoctl`, refer to
-> [Installing calicoctl]({{ site.baseurl }}/getting-started/calicoctl/install).
+> [Installing calicoctl]({{ site.baseurl }}/getting-started/clis/calicoctl/install).
 {: .alert .alert-info}
 
 The calicoctl command line interface provides a number of resource management
@@ -30,14 +30,14 @@ calicoctl commands.
 Usage:
   calicoctl [options] <command> [<args>...]
 
-    create    Create a resource by filename or stdin.
-    replace   Replace a resource by filename or stdin.
-    apply     Apply a resource by filename or stdin.  This creates a resource
+    create    Create a resource by file, directory or stdin.
+    replace   Replace a resource by file, directory or stdin.
+    apply     Apply a resource by file, directory or stdin.  This creates a resource
               if it does not exist, and replaces a resource if it does exists.
     patch     Patch a pre-exisiting resource in place.
-    delete    Delete a resource identified by file, stdin or resource type and
+    delete    Delete a resource identified by file, directory, stdin or resource type and
               name.
-    get       Get a resource identified by file, stdin or resource type and
+    get       Get a resource identified by file, directory, stdin or resource type and
               name.
     label     Add or update labels of resources.
     convert   Convert config files between different API versions.
@@ -49,6 +49,8 @@ Options:
   -h --help               Show this screen.
   -l --log-level=<level>  Set the log level (one of panic, fatal, error,
                           warn, info, debug) [default: panic]
+  --context=<context>	    The name of the kubeconfig context to use.
+  --allow-version-mismatch  Allow client and cluster versions mismatch.
 
 Description:
   The calicoctl command line tool is used to manage Calico network and security
@@ -58,6 +60,13 @@ Description:
   See 'calicoctl <command> --help' to read about a specific subcommand.
 ```
 {: .no-select-button}
+
+
+> **Note:** In a multi cluster environment if you have a {% include open-new-window.html url="https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/" text="kubeconfig" %} file with multiple cluster contexts it is possible to directly change the context using calicoctl `--context` argument.
+{: .alert .alert-info}
+
+> **Note:** The versions for Calico and calicoctl should be the same and calls to calicoctl will fail if the versions do not match. If needed, this can be overridden by using the `--allow-version-mismatch` argument.
+{: .alert .alert-info}
 
 ## Top level command line options
 

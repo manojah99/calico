@@ -1,6 +1,6 @@
 ---
-title: Interoperate with legacy firewalls using IP ranges
-description: Restrict the IP address chosen for a pod to a specific range of IP addresses
+title: Restrict a pod to use an IP address in a specific range
+description: Restrict the IP address chosen for a pod to a specific range of IP addresses.
 ---
 
 ### Big picture
@@ -9,7 +9,7 @@ Restrict the IP address chosen for a pod to a specific range of IP addresses.
 
 ### Value
 
-When Kubernetes pods interact with external systems that make decisions based on IP ranges, for example legacy firewalls, it can be useful to define several IP ranges and explicitly assign pods to those ranges. Using {{site.prodname}} IP Address Management (IPAM), you can restrict a pod to use an address from within a specific range.
+When Kubernetes pods interact with external systems that make decisions based on IP ranges (for example legacy firewalls), it can be useful to define several IP ranges and explicitly assign pods to those ranges. Using {{site.prodname}} IP Address Management (IPAM), you can restrict a pod to use an address from within a specific range.
 
 ### Features
 
@@ -58,7 +58,7 @@ Also, cluster administrators must have [configured IP pools]({{ site.baseurl }}/
 
 Annotate the pod with key `cni.projectcalico.org/ipv4pools` and/or `cni.projectcalico.org/ipv6pools` and value set to a list of IP pool names, enclosed in brackets.  For example:
 
-`cni.projectcalico.org/ipv4pools: "[\"pool-1\", \"pool-2\"]"`
+`cni.projectcalico.org/ipv4pools: '["pool-1", "pool-2"]'`
 
 Note the use of the escaped \" for the inner double quotes around the pool names.
 
@@ -66,7 +66,7 @@ Note the use of the escaped \" for the inner double quotes around the pool names
 
  Annotate the namespace with key `cni.projectcalico.org/ipv4pools` and/or `cni.projectcalico.org/ipv6pools` and value set to a list of IP pool names, enclosed in brackets.  For example:
 
-`cni.projectcalico.org/ipv4pools: "[\"pool-1\", \"pool-2\"]"`
+`cni.projectcalico.org/ipv4pools: '["pool-1", "pool-2"]'`
 
 Note the use of the escaped `\"` for the inner double quotes around the pool names.
 

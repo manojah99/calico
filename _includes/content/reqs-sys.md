@@ -1,6 +1,6 @@
 ## Node requirements
 
-- x86-64 processor
+- x86-64, arm64, ppc64le, or s390x processor
 
 - Linux kernel 3.10 or later with [required dependencies](#kernel-dependencies).
   The following distributions have the required kernel, its dependencies, and are
@@ -13,18 +13,27 @@
   {% endif %}{% if include.orch == "OpenShift" %}
   - RedHat Container OS
   {% endif %}{% if include.orch == "OpenStack" %}
-  - Ubuntu 16.04 and 18.04
-  - CentOS 7
+  - Ubuntu 18.04
+  - CentOS 8
   {% endif %}
 
 - {{site.prodname}} must be able to manage `cali*` interfaces on the host. When IPIP is
   enabled (the default), {{site.prodname}} also needs to be able to manage `tunl*` interfaces.
+  When VXLAN is enabled, {{site.prodname}} also needs to be able to manage the `vxlan.calico` interface.
 
   > **Note**: Many Linux distributions, such as most of the above, include NetworkManager.
   > By default, NetworkManager does not allow {{site.prodname}} to manage interfaces.
   > If your nodes have NetworkManager, complete the steps in
-  > [Preventing NetworkManager from controlling {{site.prodname}} interfaces]({{ site.baseurl }}/maintenance/troubleshooting#configure-networkmanager)
+  > [Preventing NetworkManager from controlling {{site.prodname}} interfaces]({{ site.baseurl }}/maintenance/troubleshoot/troubleshooting#configure-networkmanager)
   > before installing {{site.prodname}}.
+  {: .alert .alert-info}
+  
+- If your Linux distribution comes with installed Firewalld or another iptables manager it should be disabled. 
+  These may interfere with rules added by {{site.prodname}} and result in unexpected behavior.
+  
+  > **Note**: 
+  > If a host firewall is needed, it can be configured by {{site.prodname}} HostEndpoint and GlobalNetworkPolicy.
+  > More information about configuration at [Security for host]({{ site.baseurl }}/security/hosts).
   {: .alert .alert-info}
 
 ## Key/value store

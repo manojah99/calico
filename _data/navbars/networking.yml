@@ -15,7 +15,7 @@ section:
     path: /networking/advertise-service-ips
   - title: Configure MTU to maximize network performance
     path: /networking/mtu
-  - title: Configure workload access outside cluster
+  - title: Configure outgoing NAT
     path: /networking/workloads-outside-cluster
   - title: Use IPVS kube-proxy
     path: /networking/use-ipvs
@@ -28,10 +28,10 @@ section:
      path: /networking/get-started-ip-addresses
    - title: Configure IP autodetection
      path: /networking/ip-autodetection
-   - title: Enable dual stack
-     path: /networking/dual-stack
-   - title: Enable IPv6
+   - title: Configure dual stack or IPv6 only
      path: /networking/ipv6
+   - title: Configure Kubernetes control plane to operate over IPv6
+     path: /networking/ipv6-control-plane  
    - title: Add a floating IP to a pod
      path: /networking/add-floating-ip
    - title: Use specific IP address for a pod
@@ -40,13 +40,17 @@ section:
      path: /networking/assign-ip-addresses-topology
    - title: Migrate from one IP pool to another
      path: /networking/migrate-pools
-   - title: Interoperate with legacy firewalls using IP ranges
+   - title: Change IP pool block size
+     path: /networking/change-block-size  
+   - title: Restrict a pod to use an IP address in a specific range
      path: /networking/legacy-firewalls
 - title: Calico networking for OpenStack
   path: /networking/openstack/
   section:
   - title: Set up a development machine
     path:  /networking/openstack/dev-machine-setup
+  - title: Prepare a VM guest OS for IPv6
+    path: /networking/openstack/ipv6
   - title: IP addressing and connectivity
     path: /networking/openstack/connectivity
   - title: Endpoint labels and operator policy

@@ -1,3 +1,4 @@
+# Permissions required when running the operator for a Calico cluster.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -16,15 +17,23 @@ rules:
       - secrets
       - serviceaccounts
     verbs:
-      - '*'
+      - create
+      - get
+      - list
+      - update
+      - delete
+      - watch
   - apiGroups:
       - ""
     resources:
       - nodes
     verbs:
-      - 'list'
+      # Need to update node labels when migrating nodes.
+      - get
+      - patch
+      - list
       # We need this for Typha autoscaling
-      - 'watch'
+      - watch
   - apiGroups:
       - rbac.authorization.k8s.io
     resources:
@@ -33,7 +42,14 @@ rules:
       - rolebindings
       - roles
     verbs:
-      - '*'
+      - create
+      - get
+      - list
+      - update
+      - delete
+      - watch
+      - bind
+      - escalate
   - apiGroups:
       - apps
     resources:
@@ -41,13 +57,13 @@ rules:
       - daemonsets
       - statefulsets
     verbs:
-      - '*'
-  - apiGroups:
-      - apiextensions.k8s.io
-    resources:
-      - customresourcedefinitions
-    verbs:
-      - '*'
+      - create
+      - get
+      - list
+      - patch
+      - update
+      - delete
+      - watch
   - apiGroups:
       - apps
     resourceNames:
@@ -61,26 +77,86 @@ rules:
     resources:
       - '*'
     verbs:
-      - '*'
+      - create
+      - get
+      - list
+      - update
+      - patch
+      - delete
+      - watch
+  - apiGroups:
+    - networking.k8s.io
+    resources:
+    - networkpolicies
+    verbs:
+      - create
+      - update
+      - delete
+      - get
+      - list
+      - watch
+  - apiGroups:
+    - crd.projectcalico.org
+    resources:
+    - felixconfigurations
+    verbs:
+    - create
+    - patch
+    - list
+    - get
+    - watch
+  - apiGroups:
+    - crd.projectcalico.org
+    resources:
+    - ippools
+    - kubecontrollersconfigurations
+    verbs:
+    - get
+    - list
+    - watch
   - apiGroups:
       - scheduling.k8s.io
     resources:
       - priorityclasses
     verbs:
-      - '*'
-  - apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - servicemonitors
-    verbs:
-      - get
       - create
+      - get
+      - list
+      - update
+      - delete
+      - watch
   - apiGroups:
-    - policy
+      - policy
     resources:
-    - poddisruptionbudgets
+      - poddisruptionbudgets
     verbs:
-    - '*'
+      - create
+      - get
+      - list
+      - update
+      - delete
+      - watch
+  - apiGroups:
+      - apiregistration.k8s.io
+    resources:
+      - apiservices
+    verbs:
+      - list
+      - watch
+      - create 
+      - update
+  # Needed for operator lock
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - list
+      - update
+      - delete
+      - watch
 {{- if eq .Values.installation.kubernetesProvider "openshift" }}
   # When running in OpenShift, we need to update networking config.
   - apiGroups:
@@ -88,23 +164,43 @@ rules:
     resources:
       - networks/status
     verbs:
-      - 'update'
-      - '*'
+      - get
+      - list
+      - update
   - apiGroups:
       - config.openshift.io
     resources:
       - networks
       - infrastructures
     verbs:
-      - 'get'
-      - '*'
+      - get
+      - list
+      - patch
+      - watch
   # On OpenShift, we need to modify SCCs.
   - apiGroups:
       - security.openshift.io
     resources:
       - securitycontextconstraints
     verbs:
-      - '*'
+      - create
+      - get
+      - list
+      - update
+      - delete
+      - watch
+  # The following rule is only for operator certification purposes.
+  # The operator normally runs in a namespace with openshift.io/run-level=0 which bypasses SCC.
+  # However in certification tests, the operator is run in a normal namespace so this
+  # rule is needed for host networking and hostPath volume access.
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - hostaccess
+    verbs:
+      - use
   # Need these permissions for the calicoctl init container.
   - apiGroups:
       - crd.projectcalico.org
@@ -112,6 +208,7 @@ rules:
       - bgpconfigurations
       - bgppeers
       - felixconfigurations
+      - kubecontrollersconfigurations
       - globalnetworkpolicies
       - globalnetworksets
       - hostendpoints
@@ -120,43 +217,56 @@ rules:
       - networksets
     verbs:
       - create
-{{- end }}
-    # Permissions below this point are required for TSEE only.
   - apiGroups:
-      - apiregistration.k8s.io
+     - crd.projectcalico.org
     resources:
-      - apiservices
+      - ipamblocks
     verbs:
-      - '*'
+      - list
+  # Need this permission for the calicoctl version mismatch checking
   - apiGroups:
-      - "batch"
+      - crd.projectcalico.org
+    resources:
+      - clusterinformations
+    verbs:
+      - get
+  # For AWS security group setup.
+  - apiGroups:
+      - batch
     resources:
       - jobs
       - cronjobs
     verbs:
-      - '*'
+      - create
+      - update
+      - list
+      - watch
+{{- else }}
+  # Add the appropriate pod security policy permissions
   - apiGroups:
-      - projectcalico.org
+      - policy
     resources:
-      - globalreporttypes
-      - licensekeys
+      - podsecuritypolicies
+    resourceNames:
+      - tigera-operator
     verbs:
-      - '*'
+      - use
   - apiGroups:
-      - elasticsearch.k8s.elastic.co
+      - policy
     resources:
-      - elasticsearches
+      - podsecuritypolicies
     verbs:
-      - '*'
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+# Add the permissions to monitor the status of certificatesigningrequests when certificate management is enabled.
   - apiGroups:
-      - storage.k8s.io
+      - certificates.k8s.io
     resources:
-      - storageclasses
+      - certificatesigningrequests
     verbs:
-      - '*'
-  - apiGroups:
-      - kibana.k8s.elastic.co
-    resources:
-      - kibanas
-    verbs:
-      - '*'
+      - list
+{{- end }}

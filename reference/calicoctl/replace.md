@@ -24,7 +24,7 @@ command.
 
 ```
 Usage:
-  calicoctl replace --filename=<FILENAME> [--config=<CONFIG>] [--namespace=<NS>]
+  calicoctl replace --filename=<FILENAME> [--recursive] [--skip-empty] [--config=<CONFIG>] [--namespace=<NS>]
 
 Examples:
   # Replace a policy using the data in policy.yaml.
@@ -36,13 +36,19 @@ Examples:
 Options:
   -h --help                  Show this screen.
   -f --filename=<FILENAME>   Filename to use to replace the resource.  If set
-                             to "-" loads from stdin.
+                             to "-" loads from stdin. If filename is a directory, this command is
+                             invoked for each .json .yaml and .yml file within that directory,
+                             terminating after the first failure.
+  -R --recursive             Process the filename specified in -f or --filename recursively.
+     --skip-empty            Do not error if any files or directory specified using -f or --filename contain no
+                             data.
   -c --config=<CONFIG>       Path to the file containing connection
                              configuration in YAML or JSON format.
                              [default: /etc/calico/calicoctl.cfg]
   -n --namespace=<NS>        Namespace of the resource.
                              Only applicable to NetworkPolicy, NetworkSet, and WorkloadEndpoint.
                              Uses the default namespace if not specified.
+  --context=<context>        The name of the kubeconfig context to use.
 
 Description:
   The replace command is used to replace a set of resources by filename or
@@ -123,7 +129,7 @@ Description:
 
 ## See also
 
--  [Installing calicoctl]({{ site.baseurl }}/getting-started/calicoctl/install)
+-  [Installing calicoctl]({{ site.baseurl }}/getting-started/clis/calicoctl/install)
 -  [Resources]({{ site.baseurl }}/reference/resources/overview) for details on all valid resources, including file format
    and schema
 -  [NetworkPolicy]({{ site.baseurl }}/reference/resources/networkpolicy) for details on the {{site.prodname}} selector-based policy model

@@ -69,7 +69,7 @@ Define a cluster role for Typha with permission to watch {{site.prodname}} datas
 ```bash
 kubectl apply -f - <<EOF
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: calico-typha
 rules:
@@ -155,10 +155,6 @@ spec:
       labels:
         k8s-app: calico-typha
       annotations:
-        # This, along with the CriticalAddonsOnly toleration below, marks the pod as a critical
-        # add-on, ensuring it gets priority scheduling and that its resources are reserved
-        # if it ever gets evicted.
-        scheduler.alpha.kubernetes.io/critical-pod: ''
         cluster-autoscaler.kubernetes.io/safe-to-evict: 'true'
     spec:
       hostNetwork: true

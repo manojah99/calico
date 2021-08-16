@@ -1,4 +1,5 @@
 CALICO_DIR=$(shell git rev-parse --show-toplevel)
+GIT_HASH=$(shell git rev-parse --short=9 HEAD)
 VERSIONS_FILE?=$(CALICO_DIR)/_data/versions.yml
 IMAGES_FILE=
 JEKYLL_VERSION=pages
@@ -12,13 +13,13 @@ ifneq ($(IMAGES_FILE),)
 	CONFIG:=$(CONFIG),/config_images.yml
 endif
 
-# Set DEV_NULL=true to enable the Null Converter which renders the docs site as markdown. 
+# Set DEV_NULL=true to enable the Null Converter which renders the docs site as markdown.
 # This is useful for comparing changes to templates & includes.
 ifeq ($(DEV_NULL),true)
 	CONFIG:=$(CONFIG),_config_null.yml
 endif
 
-GO_BUILD_VER?=v0.22
+GO_BUILD_VER?=v0.40
 CALICO_BUILD?=calico/go-build:$(GO_BUILD_VER)
 LOCAL_USER_ID?=$(shell id -u $$USER)
 PACKAGE_NAME?=github.com/projectcalico/calico
@@ -32,7 +33,7 @@ HP_IGNORE_LOCAL_DIRS="/v1.5/,/v1.6/,/v2.0/,/v2.1/,/v2.2/,/v2.3/,/v2.4/,/v2.5/,/v
 
 ##############################################################################
 # Version information used for cutting a release.
-RELEASE_STREAM?=
+RELEASE_STREAM := $(shell cat $(VERSIONS_FILE) | $(YAML_CMD) read - '[0].title' | grep --only-matching --extended-regexp '(v[0-9]+\.[0-9]+)|master')
 
 # Use := so that these V_ variables are computed only once per make run.
 CALICO_VER := $(shell cat $(VERSIONS_FILE) | $(YAML_CMD) read - '[0].title')
@@ -44,8 +45,47 @@ POD2DAEMON_VER := $(shell cat $(VERSIONS_FILE) | $(YAML_CMD) read - '[0].compone
 DIKASTES_VER := $(shell cat $(VERSIONS_FILE) | $(YAML_CMD) read - '[0].components.calico/dikastes.version')
 FLANNEL_MIGRATION_VER := $(shell cat $(VERSIONS_FILE) | $(YAML_CMD) read - '[0].components.calico/flannel-migration-controller.version')
 TYPHA_VER := $(shell cat $(VERSIONS_FILE) | $(YAML_CMD) read - '[0].components.typha.version')
+CHART_RELEASE := $(shell cat $(VERSIONS_FILE) | $(YAML_CMD) read - '[0].chart.version')
 
 ##############################################################################
+
+
+
+CONTAINERIZED_VALUES?=docker run --rm \
+	  -v $$PWD:/calico \
+	  -w /calico \
+	  ruby:2.5
+
+# Build values.yaml for all charts
+.PHONY: values.yaml
+_includes/charts/%/values.yaml: _plugins/values.rb _plugins/helm.rb _data/versions.yml
+	$(CONTAINERIZED_VALUES) ruby ./hack/gen_values_yml.rb --registry $(REGISTRY) --chart $* > $@
+
+# The following chunk of conditionals sets the Version of the helm chart.
+# Note that helm requires strict semantic versioning, so we use v0.0 to represent 'master'.
+ifdef RELEASE_CHART
+# the presence of RELEASE_CHART indicates we're trying to cut an official chart release.
+chartVersion:=$(CALICO_VER)
+appVersion:=$(CALICO_VER)
+else
+# otherwise, it's a nightly build.
+ifeq ($(RELEASE_STREAM), master)
+# For master, helm requires semantic versioning, so use v0.0
+chartVersion:=v0.0
+appVersion:=$(CALICO_VER)-$(GIT_HASH)
+else
+chartVersion:=$(RELEASE_STREAM)
+appVersion:=$(CALICO_VER)-$(GIT_HASH)
+endif
+endif
+
+charts: chart/tigera-operator
+chart/%: _includes/charts/%/values.yaml bin/helm3
+	mkdir -p bin
+	bin/helm3 package ./_includes/charts/$(@F) \
+	--destination ./bin/ \
+	--version $(chartVersion) \
+	--app-version $(appVersion)
 
 serve: bin/helm
 	# We have to override JEKYLL_DOCKER_TAG which is usually set to 'pages'.
@@ -53,7 +93,7 @@ serve: bin/helm
 	# load any plugins. Since we're no longer running in github-pages, but would
 	# like to use a docker image that comes preloaded with all the github-pages plugins,
 	# its ok to override this variable.
-	docker run --rm \
+	docker run --rm -it \
 	  -v $$PWD/bin/helm:/usr/local/bin/helm:ro \
 	  -v $$PWD:/srv/jekyll \
 	  -e JEKYLL_DOCKER_TAG="" \
@@ -102,12 +142,17 @@ LOCAL_BUILD=true
 .PHONY: dev-image dev-test dev-clean
 ## Build a local version of Calico based on the checked out codebase.
 dev-image: $(addsuffix -dev-image, $(filter-out calico felix, $(RELEASE_REPOS)))
+
+# Dynamically declare new make targets for all calico subprojects...
 $(addsuffix -dev-image,$(RELEASE_REPOS)): %-dev-image: ../%
-	@cd $< && export TAG=$$($(TAG_COMMAND)); make image tag-images \
+	echo "TARGET:"
+	echo $< 
+	@cd $< && export TAG=$$($(TAG_COMMAND)); make image retag-build-images-with-registries \
+		ARCHES=amd64 \
 		BUILD_IMAGE=$(REGISTRY)/$* \
 		PUSH_IMAGES=$(REGISTRY)/$* \
 		LOCAL_BUILD=$(LOCAL_BUILD) \
-		IMAGETAG=$$TAG
+		IMAGETAG=$$TAG 
 
 ## Push locally built images.
 dev-push: $(addsuffix -dev-push, $(filter-out calico felix, $(RELEASE_REPOS)))
@@ -170,6 +215,10 @@ dev-versions-yaml:
 	/bin/echo -e \
 "- title: \"dev-build\"\\n"\
 "  note: \"Developer build\"\\n"\
+"  tigera-operator:\\n"\
+"   image: tigera/operator\\n"\
+"   registry: quay.io\\n"\
+"   version: master\\n"\
 "  components:\\n"\
 "     typha:\\n"\
 "      version: $$TYPHA_VER\\n"\
@@ -213,16 +262,12 @@ kubeval: _site
 	rm filtered.out
 
 helm-tests: vendor bin/helm values.yaml
-ifndef RELEASE_STREAM
-	# Default the version to master if not set
-	$(eval RELEASE_STREAM = master)
-endif
 	mkdir -p .go-pkg-cache && \
 		docker run --rm \
 		--net=host \
 		-v $$(pwd):/go/src/$(PACKAGE_NAME):rw \
 		-v $$(pwd)/.go-pkg-cache:/go/pkg:rw \
-		-v $$(pwd)/bin/helm:/usr/local/bin/helm \
+		-v $$(pwd)/bin/helm3:/usr/local/bin/helm \
 		-e LOCAL_USER_ID=$(LOCAL_USER_ID) \
 		-w /go/src/$(PACKAGE_NAME) \
 		$(CALICO_BUILD) ginkgo -cover -r -skipPackage vendor ./helm-tests -chart-path=./_includes/$(RELEASE_STREAM)/charts/calico $(GINKGO_ARGS)
@@ -266,14 +311,14 @@ update_canonical_urls:
 
 ## Tags and builds a release from start to finish.
 release: release-prereqs
-	$(MAKE) release-tag
-	$(MAKE) release-build
-	$(MAKE) release-verify
+	$(MAKE) RELEASE_CHART=true release-tag
+	$(MAKE) RELEASE_CHART=true release-build
+	$(MAKE) RELEASE_CHART=true release-verify
 
 	@echo ""
 	@echo "Release build complete. Next, push the release."
 	@echo ""
-	@echo "  make RELEASE_STREAM=$(RELEASE_STREAM) release-publish"
+	@echo "  make release-publish"
 	@echo ""
 
 ## Produces a git tag for the release.
@@ -297,23 +342,54 @@ else
     REL_NOTES_PATH:=release-notes
 endif
 
+UPLOAD_DIR?=$(OUTPUT_DIR)/upload
+$(UPLOAD_DIR):
+	mkdir -p $(UPLOAD_DIR)
+
+# Define a multi-line string for the GitHub release body.
+# We need to export it as an env var to properly format it.
+# See here: https://stackoverflow.com/questions/649246/is-it-possible-to-create-a-multi-line-string-variable-in-a-makefile/5887751
+define RELEASE_BODY
+Release notes can be found at https://docs.projectcalico.org/archive/$(RELEASE_STREAM)/$(REL_NOTES_PATH)/
+
+Attached to this release are the following artifacts:
+
+- `release-v$(CALICO_VER).tgz`: docker images and kubernetes manifests.
+- `calico-windows-v$(CALICO_VER).zip`: Calico for Windows.
+- `tigera-operator-v$(CALICO_VER)-$(CHART_RELEASE).tgz`: Calico helm v3 chart.
+
+endef
+export RELEASE_BODY
+
 ## Pushes a github release and release artifacts produced by `make release-build`.
-release-publish: release-prereqs
+release-publish: release-prereqs $(UPLOAD_DIR) helm-index
 	# Push the git tag.
 	git push origin $(CALICO_VER)
+
+	cp $(RELEASE_HELM_CHART) $(RELEASE_DIR).tgz $(RELEASE_WINDOWS_ZIP) $(UPLOAD_DIR)
 
 	# Push binaries to GitHub release.
 	# Requires ghr: https://github.com/tcnksm/ghr
 	# Requires GITHUB_TOKEN environment variable set.
 	ghr -u projectcalico -r calico \
-		-b 'Release notes can be found at https://docs.projectcalico.org/$(RELEASE_STREAM)/$(REL_NOTES_PATH)/' \
+		-b "$$RELEASE_BODY" \
 		-n $(CALICO_VER) \
-		$(CALICO_VER) $(RELEASE_DIR).tgz
+		$(CALICO_VER) $(UPLOAD_DIR)
 
 	@echo "Verify the GitHub release based on the pushed tag."
 	@echo ""
 	@echo "  https://github.com/projectcalico/calico/releases/tag/$(CALICO_VER)"
 	@echo ""
+
+## Updates helm-index with the new release chart
+helm-index: release-prereqs
+	rm -rf  charts
+	mkdir -p charts/$(CALICO_VER)/
+	cp $(RELEASE_HELM_CHART) charts/$(CALICO_VER)/
+	wget https://calico-public.s3.amazonaws.com/charts/index.yaml -O charts/index.yaml.bak
+	cd charts/ && helm repo index . --merge index.yaml.bak --url https://github.com/projectcalico/calico/releases/download/
+	aws --profile helm s3 cp index.yaml s3://calico-public/charts/ --acl public-read
+	rm -rf charts
 
 ## Generates release notes for the given version.
 release-notes: #release-prereqs
@@ -332,10 +408,7 @@ endif
 		bash -c 'pip install pygithub && /usr/local/bin/python /code/release-scripts/get-contributors.py >> /code/AUTHORS.md'
 
 # release-prereqs checks that the environment is configured properly to create a release.
-release-prereqs:
-ifndef RELEASE_STREAM
-	$(error RELEASE_STREAM is undefined - run using make release RELEASE_STREAM=vX.Y)
-endif
+release-prereqs: charts
 	@if [ $(CALICO_VER) != $(NODE_VER) ]; then \
 		echo "Expected CALICO_VER $(CALICO_VER) to equal NODE_VER $(NODE_VER)"; \
 		exit 1; fi
@@ -349,6 +422,8 @@ RELEASE_DIR?=$(OUTPUT_DIR)/$(RELEASE_DIR_NAME)
 RELEASE_DIR_K8S_MANIFESTS?=$(RELEASE_DIR)/k8s-manifests
 RELEASE_DIR_IMAGES?=$(RELEASE_DIR)/images
 RELEASE_DIR_BIN?=$(RELEASE_DIR)/bin
+RELEASE_WINDOWS_ZIP=$(OUTPUT_DIR)/calico-windows-$(NODE_VER).zip
+RELEASE_HELM_CHART=bin/tigera-operator-$(CALICO_VER)-$(CHART_RELEASE).tgz
 
 # Determine where the manifests live. For older versions we used
 # a different location, but we still need to package them up for patch
@@ -360,8 +435,11 @@ DEFAULT_MANIFEST_SRC=./_site/$(RELEASE_STREAM)/getting-started/kubernetes/instal
 endif
 MANIFEST_SRC?=$(DEFAULT_MANIFEST_SRC)
 
-## Create an archive that contains a complete "Calico" release
-release-archive: release-prereqs $(RELEASE_DIR).tgz
+$(RELEASE_WINDOWS_ZIP):
+	wget https://github.com/projectcalico/node/releases/download/$(NODE_VER)/calico-windows-$(NODE_VER).zip -P $(OUTPUT_DIR)
+
+## Create an archive that contains a complete "Calico" release. This includes the release tarball (which bundles manifests, images, and binaries) and the Calico for Windows installation archive.
+release-archive: release-prereqs $(RELEASE_DIR).tgz $(RELEASE_WINDOWS_ZIP)
 
 $(RELEASE_DIR).tgz: $(RELEASE_DIR) $(RELEASE_DIR_K8S_MANIFESTS) $(RELEASE_DIR_IMAGES) $(RELEASE_DIR_BIN) $(RELEASE_DIR)/README
 	tar -czvf $(RELEASE_DIR).tgz -C $(OUTPUT_DIR) $(RELEASE_DIR_NAME)
@@ -449,17 +527,25 @@ $(RELEASE_DIR_BIN)/%:
 ###############################################################################
 # Utilities
 ###############################################################################
-HELM_RELEASE=helm-v2.16.3-linux-amd64.tar.gz
-bin/helm:
+# TODO: stop using bin/helm as an entrypoint in build scripts.
+bin/helm: bin/helm3
 	mkdir -p bin
 	$(eval TMP := $(shell mktemp -d))
-	wget -q https://storage.googleapis.com/kubernetes-helm/$(HELM_RELEASE) -O $(TMP)/$(HELM_RELEASE)
-	tar -zxvf $(TMP)/$(HELM_RELEASE) -C $(TMP)
+	wget -q https://get.helm.sh/helm-v2.16.3-linux-amd64.tar.gz -O $(TMP)/helm.tar.gz
+	tar -zxvf $(TMP)/helm.tar.gz -C $(TMP)
 	mv $(TMP)/linux-amd64/helm bin/helm
+
+helm-deps: bin/helm3 bin/helm
+bin/helm3:
+	mkdir -p bin
+	$(eval TMP := $(shell mktemp -d))
+	wget -q https://get.helm.sh/helm-v3.3.1-linux-amd64.tar.gz -O $(TMP)/helm3.tar.gz
+	tar -zxvf $(TMP)/helm3.tar.gz -C $(TMP)
+	mv $(TMP)/linux-amd64/helm bin/helm3
 
 .PHONY: values.yaml
 values.yaml: _includes/charts/calico/values.yaml _includes/charts/tigera-operator/values.yaml
-_includes/charts/%/values.yaml:
+_includes/charts/%/values.yaml: _plugins/values.rb _plugins/helm.rb _data/versions.yml
 	docker run --rm \
 	  -v $$PWD:/calico \
 	  -w /calico \
@@ -502,6 +588,7 @@ release-test-image:
 .PHONY: release-test
 release-test: release-test-image
 	docker run --rm \
+	-v /var/run/docker.sock:/var/run/docker.sock \
 	-v $(PWD):/docs \
 	-e RELEASE_STREAM=$(RELEASE_STREAM) \
 	$(DOCS_TEST_CONTAINER) sh -c \
@@ -509,3 +596,22 @@ release-test: release-test-image
 	-s -v --with-xunit \
 	--xunit-file='/docs/nosetests.xml' \
 	--with-timer $(EXTRA_NOSE_ARGS)"
+
+API_GEN_REPO?=tmjd/gen-crd-api-reference-docs
+API_GEN_BRANCH?=kb_v2
+OPERATOR_VERSION?=master
+OPERATOR_REPO?=tigera/operator
+build-operator-reference:
+	mkdir -p .go-pkg-cache && \
+	   docker run --rm \
+	   --net=host \
+	   -v $$(pwd):/go/src/$(PACKAGE_NAME):rw \
+	   -v $$(pwd)/.go-pkg-cache:/go/pkg:rw \
+	   -e LOCAL_USER_ID=$(LOCAL_USER_ID) \
+	   -w /go/src/$(PACKAGE_NAME) \
+	   $(CALICO_BUILD) /bin/bash -c 'export GO111MODULE=on && rm -rf builder && mkdir builder && cd builder && \
+	           git clone --depth=1 -b $(API_GEN_BRANCH) https://github.com/$(API_GEN_REPO) api-gen && cd api-gen && \
+	           go mod edit -replace github.com/tigera/operator=github.com/$(OPERATOR_REPO)@$(OPERATOR_VERSION) && \
+	           go mod download && go build && \
+	           ./gen-crd-api-reference-docs -config /go/src/$(PACKAGE_NAME)/reference/installation/config.json \
+	                   -api-dir github.com/tigera/operator/api -out-file /go/src/$(PACKAGE_NAME)/reference/installation/_api.html'

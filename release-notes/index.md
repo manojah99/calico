@@ -7,12 +7,12 @@ canonical_url: '/release-notes/index'
 The following table shows component versioning for {{site.prodname}}  **{{ page.version }}**.
 
 
-To select a different version, click **Releases** in the top-right navigation bar.
+To select a different version, click **Releases** in the top navigation bar.
 
 {% for release in site.data.versions %}
 ## {{ release.title }}
 {% unless release.title == "master" %}
-[Release archive](https://github.com/projectcalico/calico/releases/download/{{ release.title }}/release-{{ release.title }}.tgz) with Kubernetes manifests, Docker images and binaries.
+[Release archive](https://github.com/projectcalico/calico/releases/download/{{ release.title }}/release-{{ release.title }}.tgz){:target="_blank"} with Kubernetes manifests, Docker images and binaries.
 {% endunless %}
 
 {% if release.note %}

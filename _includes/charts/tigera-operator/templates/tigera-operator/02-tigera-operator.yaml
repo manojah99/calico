@@ -16,6 +16,8 @@ spec:
         name: tigera-operator
         k8s-app: tigera-operator
     spec:
+      nodeSelector:
+        kubernetes.io/os: linux
       tolerations:
         - effect: NoExecute
           operator: Exists
@@ -31,6 +33,10 @@ spec:
           imagePullPolicy: IfNotPresent
           command:
             - operator
+          volumeMounts:
+            - name: var-lib-calico
+              readOnly: true
+              mountPath: /var/lib/calico
           env:
             - name: WATCH_NAMESPACE
               value: ""
@@ -42,7 +48,23 @@ spec:
               value: "tigera-operator"
             - name: TIGERA_OPERATOR_INIT_IMAGE_VERSION
               value: {{.Values.tigeraOperator.version}}
+          envFrom:
+            - configMapRef:
+                name: kubernetes-services-endpoint
+                optional: true
+      volumes:
+        - name: var-lib-calico
+          hostPath:
+            path: /var/lib/calico
 {{- if eq .Values.installation.kubernetesProvider "openshift" }}
+        - name: calico-resources
+          configMap:
+            defaultMode: 0400
+            name: calico-resources
+        - name: install-resources-script
+          configMap:
+            defaultMode: 0777
+            name: install-resources-script
       initContainers:
         - name: create-initial-resources
           image: {{.Values.calicoctl.image}}:{{.Values.calicoctl.tag}}
@@ -50,20 +72,15 @@ spec:
             - name: DATASTORE_TYPE
               value: kubernetes
           command:
-            - /script/install.sh
+            - calicoctl
+          args:
+            - --allow-version-mismatch
+            - create
+            - --skip-exists
+            - --skip-empty
+            - -f
+            - /calico-resources
           volumeMounts:
-            - name: calicoctl-resources
-              mountPath: /calicoctl-resources
-            - name: install-resources-script
-              mountPath: /script/install.sh
-              subPath: install.sh
-      volumes:
-        - name: calicoctl-resources
-          configMap:
-            defaultMode: 0400
-            name: calicoctl-resources
-        - name: install-resources-script
-          configMap:
-            defaultMode: 0777
-            name: install-resources-script
+            - name: calico-resources
+              mountPath: /calico-resources
 {{- end}}

@@ -1,6 +1,6 @@
 ---
-title: Apply policy to services exposed externally as cluster IPs
-description: Expose Kuberenetes service cluster IPs over BGP using Calico, and restrict who can access them using Calico network policy.
+title: Apply Calico policy to services exposed externally as cluster IPs
+description: Expose Kubernetes service cluster IPs over BGP using Calico, and restrict who can access them using Calico network policy.
 ---
 
 ### Big picture
@@ -38,7 +38,7 @@ Cluster IPs were originally designed for use within the Kubernetes cluster. {{si
 
 #### Traffic routing: local versus cluster modes
 
-{{site.prodname}} implements [Kubernetes service external traffic policy](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip), which controls whether external traffic is routed to node-local or cluster-wide endpoints. The following table summarizes key differences between these settings. The default is **cluster mode**.
+{{site.prodname}} implements [Kubernetes service external traffic policy](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip){:target="_blank"}, which controls whether external traffic is routed to node-local or cluster-wide endpoints. The following table summarizes key differences between these settings. The default is **cluster mode**.
 
 
 | **Service setting**                         | **Traffic is load balanced...**                     | **Pros and cons**                                            | **Required service type**                                    |
@@ -136,7 +136,7 @@ spec:
 
 **Add a rule to allow traffic destined for all host endpoints**
 
-Or, you can add rules that whitelist specific host traffic including Kubernetes and {{site.prodname}}. Without this rule, normal host traffic is blocked.
+Or, you can add rules that allow specific host traffic including Kubernetes and {{site.prodname}}. Without this rule, normal host traffic is blocked.
 
 ```yaml
 apiVersion: projectcalico.org/v3

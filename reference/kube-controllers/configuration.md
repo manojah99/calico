@@ -18,7 +18,7 @@ The `{{page.imageNames["calico/kube-controllers"]}}` container includes the foll
 1. namespace controller: watches namespaces and programs {{site.prodname}} profiles.
 1. serviceaccount controller: watches service accounts and programs {{site.prodname}} profiles.
 1. workloadendpoint controller: watches for changes to pod labels and updates {{site.prodname}} workload endpoints.
-1. node controller: watches for the removal of Kubernetes nodes and removes corresponding data from {{site.prodname}}.
+1. node controller: watches for the removal of Kubernetes nodes and removes corresponding data from {{site.prodname}}, and optionally watches for node updates to create and sync host endpoints for each node.
 
 The {{site.prodname}} Kubernetes manifests run these controllers within a single pod in the `calico-kube-controllers` deployment.
 
@@ -42,7 +42,7 @@ The `*_FILE` variables are _paths_ to the corresponding certificates/keys. As su
 must ensure that the files exist within the pod. This is usually done in one of two ways:
 
 * Mount the certificates from the host. This requires that the certificates be present on the host running the controller.
-* Use Kubernetes [Secrets](http://kubernetes.io/docs/user-guide/secrets/) to mount the certificates into the pod as files.
+* Use Kubernetes [Secrets](http://kubernetes.io/docs/user-guide/secrets/){:target="_blank"} to mount the certificates into the pod as files.
 
 #### kubernetes
 
@@ -56,23 +56,37 @@ configure API access if needed.
 
 ### Other configuration
 
+> **Note:** Whenever possible, prefer configuring the kube-controllers component using the [KubeControllersConfiguration]({{site.baseurl}}/reference/resources/kubecontrollersconfig) API resource,
+> Some configuration options may not be available through environment variables.
+{: .alert .alert-info}
+
 The following environment variables can be used to configure the {{site.prodname}} Kubernetes controllers.
 
 | Environment   | Description | Schema | Default |
 | ------------- | ----------- | ------ | -------
-| `DATASTORE_TYPE`      | Which datastore type to use | etcdv3, kubernetes | etcdv3
+| `DATASTORE_TYPE`      | Which datastore type to use | etcdv3, kubernetes | kubernetes
 | `ENABLED_CONTROLLERS` | Which controllers to run    | namespace, node, policy, serviceaccount, workloadendpoint | policy,namespace,serviceaccount,workloadendpoint,node
 | `LOG_LEVEL`           | Minimum log level to be displayed. | debug, info, warning, error | info
 | `KUBECONFIG`          | Path to a kubeconfig file for Kubernetes API access | path |
 | `SYNC_NODE_LABELS`    | When enabled, Kubernetes node labels will be copied to Calico node objects. | boolean | true
-| `COMPACTION_PERIOD` | Compact the etcd database on this interval. Set to "0" to disable. | [duration](https://golang.org/pkg/time/#ParseDuration) | 10m
+| `AUTO_HOST_ENDPOINTS` | When set to enabled, automatically create a host endpoint for each node. | enabled, disabled | disabled
+| `COMPACTION_PERIOD` | Compact the etcd database on this interval. Set to "0" to disable. | [duration](https://golang.org/pkg/time/#ParseDuration){:target="_blank"} | 10m
 
 ## About each controller
 
 ### Node controller
 
-The node controller automatically cleans up configuration for nodes that no longer exist. The controller must have read
-access to the Kubernetes API to monitor `Node` events.
+The node controller has several functions depending on the datastore in use.
+
+**Either datastore**
+
+- Garbage collects IP addresses.
+- Automatically provisions host endpoints for Kubernetes nodes.
+
+**etcdv3 only**
+
+- Garbage collects projectcalico.org/v3 Node resources when the Kubernetes node is deleted.
+- Synchronizes labels between Kubernetes and Calico Node resources.
 
 The node controller is not enabled by default if `ENABLED_CONTROLLERS` is not explicitly specified.
 However, the {{site.prodname}} Kubernetes manifests explicitly specify the `ENABLED_CONTROLLERS` and enable this controller
@@ -84,8 +98,9 @@ This controller is valid when using either the `etcdv3` or `kubernetes` datastor
 
 To enable the node controller when using `etcdv3`, perform the following two steps.
 
-1. Add "node" to the list of enabled controllers in the environment for kube-controllers. For example: `ENABLED_CONTROLLERS=workloadendpoint,profile,policy,node`
+1. Enable the controller in your [KubeControllersConfiguration]({{site.baseurl}}/reference/resources/kubecontrollersconfig) or add "node" to the list of enabled controllers in the environment for kube-controllers. For example: `ENABLED_CONTROLLERS=workloadendpoint,profile,policy,node`
 1. Configure {{site.nodecontainer}} with a Kubernetes node reference by adding the following snippet to the environment section of the {{site.noderunning}} daemon set.
+
    ```yaml
    - name: CALICO_K8S_NODE_REF
      valueFrom:
@@ -101,8 +116,7 @@ resource that don't exist in the Kubernetes node will remain as is.
 
 #### kubernetes
 
-To enable the node controller when using `kubernetes`, set the list of enabled controllers
-in the environment for kube-controllers to `node`. For example: `ENABLED_CONTROLLERS=node`
+To enable the node controller when using `kubernetes`, enable the controller in your [KubeControllersConfiguration]({{site.baseurl}}/reference/resources/kubecontrollersconfig) or set the list of enabled controllers in the environment for kube-controllers to `node`. For example: `ENABLED_CONTROLLERS=node`
 
 ### Policy controller
 

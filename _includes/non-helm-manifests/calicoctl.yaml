@@ -24,7 +24,11 @@ spec:
   containers:
   - name: calicoctl
     image: {{page.registry}}{{page.imageNames["calicoctl"]}}:{{site.data.versions.first.components["calicoctl"].version}}
-    command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+    command:
+      - /calicoctl
+    args:
+      - version
+      - --poll=1m
     env:
     - name: DATASTORE_TYPE
       value: kubernetes
@@ -32,7 +36,7 @@ spec:
 ---
 
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: calicoctl
 rules:
@@ -70,12 +74,14 @@ rules:
       - globalnetworkpolicies
       - globalnetworksets
       - ippools
+      - kubecontrollersconfigurations
       - networkpolicies
       - networksets
       - hostendpoints
       - ipamblocks
       - blockaffinities
       - ipamhandles
+      - ipamconfigs
     verbs:
       - create
       - get
@@ -91,7 +97,7 @@ rules:
 
 ---
 
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: calicoctl

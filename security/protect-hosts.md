@@ -53,7 +53,7 @@ In terms of design consistency in {{site.prodname}}, you may wonder about the fo
 Yes. DefaultEndpointToHostAction controls whether or not workloads can acesss their local host.<br>
 
 **Does {{site.prodname}} protect a workload from the host it is running on?**<br>
-No. {{site.prodname}} allows connections the host makes to the workloads running on that host. Some orchestrators like Kubernetes depend on this connectivity for health checking the workload. Moreover, processes running on the local host are often privileged enough to override local {{site.prodname}} policy. Be very cautious with the processes that you allow to run in the host's root network namespace.</br>
+No. {{site.prodname}} allows connections the host makes to the workloads running on that host. Some orchestrators like Kubernetes depend on this connectivity for health checking the workload. Moreover, processes running on the local host are often privileged enough to override local {{site.prodname}} policy. Be very cautious with the processes that you allow to run in the host's root network namespace.
 
 ### Before you begin...
 
@@ -67,21 +67,22 @@ If you are already running {{site.prodname}} for Kubernetes, you are good to go.
 
 #### Avoid accidentally cutting all host connectivity
 
-To avoid inadvertently cutting all host connectivity because of non-existent or misconfigured network policy, {{site.prodname}} uses failsafe rules that open specific ports on all host endpoints.
+To avoid inadvertently cutting all host connectivity because of non-existent or misconfigured network policy, {{site.prodname}} uses failsafe rules that open specific ports and CIDRs on all host endpoints.
 
 Review the following table to determine if the defaults work for your implementation. If not, change the default ports using the parameters, **FailsafeInboundHostPorts** and **FailsafeOutboundHostPorts** in [Configuring Felix]({{ site.baseurl }}/reference/felix/configuration#environment-variables).
 
-| Port   | Protocol | Direction           |              Purpose                           |
-|--------|----------|---------------------|------------------------------------------------|
-|   22   |   TCP    |  Inbound            |             SSH access                         |
-|   53   |   UDP    |  Outbound           |             DNS queries                        |
-|   67   |   UDP    |  Outbound           |             DHCP access                        |
-|   68   |   UDP    |  Inbound            |             DHCP access                        |
-|   179  |   TCP    |  Inbound & Outbound |             BGP access ({{site.prodname}} networking)     |
-|   2379 |   TCP    |  Inbound & Outbound |             etcd access                        |
-|   2380 |   TCP    |  Inbound & Outbound |             etcd access                        |
-|   6666 |   TCP    |  Inbound & Outbound |             etcd self-hosted service access    |
-|   6667 |   TCP    |  Inbound & Outbound |             etcd self-hosted service access    |
+| Port   | Protocol | CIDR       | Direction           |              Purpose                           |
+|--------|----------|------------|---------------------|------------------------------------------------|
+|   22   |   TCP    |  0.0.0.0/0 |  Inbound            |             SSH access                         |
+|   53   |   UDP    |  0.0.0.0/0 |  Outbound           |             DNS queries                        |
+|   67   |   UDP    |  0.0.0.0/0 |  Outbound           |             DHCP access                        |
+|   68   |   UDP    |  0.0.0.0/0 |  Inbound            |             DHCP access                        |
+|   179  |   TCP    |  0.0.0.0/0 |  Inbound & Outbound |             BGP access ({{site.prodname}} networking)     |
+|   2379 |   TCP    |  0.0.0.0/0 |  Inbound & Outbound |             etcd access                        |
+|   2380 |   TCP    |  0.0.0.0/0 |  Inbound & Outbound |             etcd access                        |
+|   6443 |   TCP    |  0.0.0.0/0 |  Inbound & Outbound |             Kubernetes API server access       |
+|   6666 |   TCP    |  0.0.0.0/0 |  Inbound & Outbound |             etcd self-hosted service access    |
+|   6667 |   TCP    |  0.0.0.0/0 |  Inbound & Outbound |             etcd self-hosted service access    |
 
 #### Use policy to restrict host traffic
 
@@ -185,6 +186,7 @@ To change this parameter for all hosts, edit the **FelixConfiguration** object n
 ### Above and beyond
 
 - [Apply policy to Kubernetes node ports]({{ site.baseurl }}/security/kubernetes-node-ports)
+- [Protect Kubernetes nodes with host endpoints managed by {{site.prodname}}]({{ site.baseurl }}/security/kubernetes-nodes)
 - [Defend against DoS attacks]({{ site.baseurl }}/security/defend-dos-attack)
 - [Global network policy]({{ site.baseurl }}/reference/resources/globalnetworkpolicy)
 - [Host endpoint]({{ site.baseurl }}/reference/resources/hostendpoint)

@@ -41,6 +41,19 @@ To release Calico, you need **the following permissions**:
 
 - You must be able to access binaries.projectcalico.org.
 
+- You must have admin access to docs.projectcalico.org site on netlify.
+
+- To publish the helm release to the repo, you’ll need an AWS helm profile:
+  Add this to your ~/.aws/config
+      ```
+      [profile helm]
+      role_arn = arn:aws:iam::<production_account_id>:role/CalicoDevHelmAdmin
+      mfa_serial = arn:aws:iam::<tigera-dev_account_id>:mfa/myusername
+      source_profile = default
+      region = us-east-2
+      ```
+  Your user will need permission for assuming the helm admin role in the production account.
+  
 You'll also need **several GB of disk space** (~7GB for v3.4.0, for example).
 
 Some of the release scripts also require **tools to be installed** in your dev environment:
@@ -166,6 +179,26 @@ at the same time that subcomponent release branches are cut, often well before t
        version: vX.Y
    ```
 
+1. In [netlify.toml](netlify.toml)
+    1. set the `RELEASE_VERSION` environment variable to `vX.Y`.
+    1. add the below redirect at the top of redirects.
+    ```
+       # unforced generic redirect of /vX.Y to /
+       [[redirects]]
+         from = "/vX.Y/*"
+         to = "/:splat"
+         status = 301
+    ```
+
+1. In [netlify/_redirects](_redirects) add a new for the new release following the other examples (Note: This page may vary with release, also just non-slash to slash redirects doesn't work. It needs to point to a page).
+This makes sure that requests coming to `/archive/vX.Y` (without a slash) don't fail with 404.
+
+1. Create the the release notes file. This does not need to be populated now but does need to exist.
+
+   ```
+   touch _includes/release-notes/<VERSION>-release-notes.md
+   ```
+
 1. If appropriate, update the list of tested versions for different platforms in the appropriate documents.
 
    - Kubernetes `getting-started/kubernetes/requirements.md`
@@ -182,39 +215,48 @@ at the same time that subcomponent release branches are cut, often well before t
 
 ### Publishing the candidate release branch
 
-1. Create a new branch off of the latest master.
+1. Check out to the candidate release branch that is created as per the instructions [here](#creating-a-candidate-release-branch).
 
    ```
-   git checkout -b release-candidate-vX.Y
+   git checkout release-vX.Y
    ```
 
-1. In [netlify.toml](netlify.toml), set the `CANDIDATE_RELEASE` environment variable:
+1. On netlify create a new site using the `release-vX.Y` branch (You should at least have write access to this repo for site creation)
+
+1. Rename the randomly generated site name to follow the same naming convention as other releases (Ex: `calico-vX-Y`).
+
+1. Ensure that the site is generated properly by visiting site URL (Ex. https://calico-vX-Y.netlify.app/archive/vX.Y/).
+
+1. After ensuring that the site deployment is successful, in current production branch's [netlify.toml](netlify.toml), add below proxy rules for the release candidate at the top of `redirects` rules.
 
    ```toml
-   [build.environment]
-     CANDIDATE_RELEASE = "vX.Y"
+    [[redirects]]
+      from = "/archive/vX.Y/*"
+      to = "https://calico-vX-Y.netlify.app/archive/vX.Y/:splat"
+      status = 200
+
+    [[redirects]]
+      from = "/vX.Y/*"
+      to = "https://calico-vX-Y.netlify.app/vX.Y/:splat"
+      status = 200
    ```
 
-1. Commit your changes. For example:
+1. Ensure that these proxy rules are cherry-picked to master branch as well so that future releases, which would be cut from master, will have references to this releases.
 
-   ```
-   git commit -m "build vX.Y candidate"
-   ```
-
-1. Push your branch and open a pull request to the upstream master branch. Get it reviewed and wait for it to pass CI.
+1. Open a pull request to upstream production branch, get it reviewed and merged. This would make the candidate site docs available at `docs.projectcalico.org/archive/vX.Y/` (Note: the trailing slash)
 
 ### Promoting to be the latest release in the docs
 
 This section describes how to create a new major or minor release. It assumes that the release branch has already been created
 as described in the section above.
 
-- Move current release to the archives
-
 1. Checkout the previously created release branch.
 
    ```
    git checkout release-vX.Y
    ```
+
+1. Add the previous release to `_data/archives.yaml`. Make this change in master as well.
 
 1. Add the new version to the correct release section in `_data/versions.yml`.
 
@@ -253,35 +295,15 @@ as described in the section above.
    make release-publish
    ```
 
-1. Merge the PR. This will cause candidate.docs.projectcalico.org to be updated (after a few minutes). Validate that everything looks correct before proceeding to the next step.
+1. Merge the PR.
 
-1. Checkout the master branch
+1. On netlify locate `docs.projectcalico.org` site and the update `Production branch` in `Settings -> Build & deploy -> Deploy contexts` to `release-vX.Y` in  site settings and trigger the deployment.
+(Note: This site contains `LATEST_RELEASE` environment variable in netlify UI, using which `netlify.toml` picks up the correct build for latest release.)
+This will cause `docs.projectcalico.org` to be updated (after a few minutes). Validate that everything looks correct.
 
-1. In [netlify.toml](netlify.toml):
+## Confirm the previous release is archived
 
-   1. Set the `CANDIDATE_RELEASE` environment variable back to an empty string.
-
-   1. Update the `CURRENT_RELEASE` environment variable.
-
-1. Commit your changes. For example:
-
-   ```
-   git commit -m "Promote vX.Y.Z to latest"
-   ```
-
-1. Push your branch and open a pull request to the upstream master branch. Get it reviewed and wait for it to pass CI.
-
-## Adding the previous release to archive.docs.projectcalico.org
-
-1. Checkout latest master.
-
-   ```
-   git checkout master
-   ```
-
-1. Add the previous release to the top of `_data/archive.yml`
-
-1. Commit your changes and open a PR against upstream master.
+1. Ensure that the site is accessible by visiting `docs.projectcalico.org/archive/<version>/`.
 
 ## <a name="patch"></a> Performing a "patch" release
 
@@ -309,13 +331,13 @@ as described in the section above.
    at the newly created commit.
 
    ```
-   make release RELEASE_STREAM=vX.Y
+   make release
    ```
 
    Then, publish the tag and release.
 
    ```
-   make release-publish RELEASE_STREAM=vX.Y
+   make release-publish
    ```
 1. Merge the PR. This will cause the live docs site to be updated (after a few minutes).
 
@@ -341,7 +363,7 @@ release notes for a given version, perform the following steps.
 1. Run the following command to collect all release notes for the given version.
 
    ```
-   make RELEASE_STREAM=vX.Y release-notes
+   make release-notes
    ```
 
    A file called `<VERSION>-release-notes.md` will be created with the raw release note content.
@@ -358,3 +380,12 @@ release notes for a given version, perform the following steps.
 
    - [Example release notes for a major/minor release](https://github.com/projectcalico/calico/blob/v3.1.0/_includes/v3.1/release-notes/v3.1.0-release-notes.md)
    - [Example release notes for a patch release](https://github.com/projectcalico/calico/blob/7d5594dbca14cb1b765b65eb11bdd8239d23dfb3/_includes/v3.0/release-notes/v3.0.5-release-notes.md)
+
+# Verifying the release
+
+The final steps in the process are to check it all worked.  This is important, so please don't skip it.
+
+1. Checkout the relevant docs branch (i.e. the release-vX.Y branch)
+1. run `make release-test`.  The release validation checks will run - they check for the presence of all the required binaries tarballs, tags, etc.  They do NOT check that the _contents_ of those are valid, but are a good test that the release process itself worked correctly.
+1. check the output of the tests - if any test failed, dig in and understand why.
+1. Kick off some e2e tests to test the contents of the release.

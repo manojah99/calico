@@ -28,7 +28,6 @@ This how-to guide uses the following {{site.prodname}} features:
 
 - Ensure that your Kubernetes cluster meets [requirements]({{site.baseurl}}/getting-started/kubernetes/requirements).
   If you do not have a cluster, see {% include open-new-window.html text='Installing kubeadm' url='https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/' %}.
-- If you are using CoreOS, [make this required change to manifests]({{site.baseurl}}/reference/faq#are-the-calico-manifests-compatible-with-coreos).
 
 ### How to
 
@@ -37,7 +36,10 @@ This how-to guide uses the following {{site.prodname}} features:
 
 #### Determine your datastore
 
-{{site.prodname}} supports both **Kubernetes API datastore (kdd)** and **etcd** datastores. The **Kubernetes API datastore** is recommended for on-premises deployments, and supports only Kubernetes workloads; **etcd** is the best datastore for hybrid deployments.
+The **Kubernetes API datastore** is the recommended datastore for Kubernetes workloads.
+
+>**Note**: The **etcd** database is not recommended for new installs. However, it is an option if you are running {{site.prodname}} as the network plugin for both OpenStack and Kubernetes.
+{: .alert .alert-info}
 
 #### Install Calico on nodes
 
@@ -64,6 +66,9 @@ Based on your datastore and number of nodes, select a link below to install {{si
    ```bash
    kubectl apply -f calico.yaml
    ```
+
+The geeky details of what you get:
+{% include geek-details.html details='Policy:Calico,IPAM:Calico,CNI:Calico,Overlay:IPIP,Routing:BGP,Datastore:Kubernetes' %}
 
 ##### Install Calico with Kubernetes API datastore, more than 50 nodes
 
@@ -105,7 +110,13 @@ Based on your datastore and number of nodes, select a link below to install {{si
    kubectl apply -f calico.yaml
    ```
 
+The geeky details of what you get:
+{% include geek-details.html details='Policy:Calico,IPAM:Calico,CNI:Calico,Overlay:IPIP,Routing:BGP,Datastore:Kubernetes' %}
+
 ##### Install Calico with etcd datastore
+
+>**Note**: The **etcd** database is not recommended for new installs. However, it is an option if you are running {{site.prodname}} as the network plugin for both OpenStack and Kubernetes.
+{: .alert .alert-info}
 
 1. Download the {{site.prodname}} networking manifest for etcd.
 
@@ -123,18 +134,21 @@ Based on your datastore and number of nodes, select a link below to install {{si
    kubectl apply -f calico.yaml
    ```
 
+The geeky details of what you get:
+{% include geek-details.html details='Policy:Calico,IPAM:Calico,CNI:Calico,Overlay:IPIP,Routing:BGP,Datastore:etcd' %}
+
 ### Next steps
 
-**Tools**
+**Required**
 
-- [Install and configure calicoctl]({{site.baseurl}}/getting-started/calicoctl/install)
+- [Install and configure calicoctl]({{site.baseurl}}/getting-started/clis/calicoctl/install)
 
-**Networking**
+**Recommended - Networking**
 
 - If you are using the default BGP networking with full-mesh node-to-node peering with no encapsulation, go to [Configure BGP peering]({{site.baseurl}}/networking/bgp) to get traffic flowing between pods.
 - If you are unsure about networking options, or want to implement encapsulation (overlay networking), see [Determine best networking option]({{site.baseurl}}/networking/determine-best-networking).
 
-**Security**
+**Recommended - Security**
 
 - [Secure Calico component communications]({{site.baseurl}}/security/comms/crypto-auth)
 - [Secure hosts by installing Calico on hosts]({{site.baseurl}}/getting-started/bare-metal/about)

@@ -11,7 +11,6 @@ This guide walks through using Kubernetes `NetworkPolicy` to define more complex
 
 ### Requirements
 
-- Calico v2.6.1+ with Kubernetes 1.8+
 - A working Kubernetes cluster and access to it using kubectl
 - Your Kubernetes nodes have connectivity to the public internet
 - You are familiar with [Kubernetes NetworkPolicy](kubernetes-policy-basic)
@@ -31,7 +30,7 @@ We'll use a new namespace for this guide.  Run the following commands to create 
 
 ```bash
 kubectl create ns advanced-policy-demo
-kubectl run --namespace=advanced-policy-demo nginx --replicas=2 --image=nginx
+kubectl create deployment --namespace=advanced-policy-demo nginx --image=nginx
 kubectl expose --namespace=advanced-policy-demo deployment nginx --port=80
 ```
 
@@ -71,7 +70,7 @@ It should return the HTML of the google.com home page.
 
 ### 2. Deny all ingress traffic
 
-Enable ingress isolation on the namespace by deploying a [default deny all ingress traffic policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-deny-all-ingress-traffic).
+Enable ingress isolation on the namespace by deploying a [default deny all ingress traffic policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-deny-all-ingress-traffic){:target="_blank"}.
 
 ```bash
 kubectl create -f - <<EOF
@@ -134,7 +133,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      run: nginx
+      app: nginx
   ingress:
     - from:
       - podSelector:
@@ -164,7 +163,7 @@ After creating the policy, we can now access the nginx Service.
 
 ### 4. Deny all egress traffic
 
-Enable egress isolation on the namespace by deploying a [default deny all egress traffic policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/#4-deny-all-egress-traffic).
+Enable egress isolation on the namespace by deploying a [default deny all egress traffic policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/#4-deny-all-egress-traffic){:target="_blank"}.
 
 ```bash
 kubectl create -f - <<EOF
@@ -285,7 +284,7 @@ Even though DNS egress traffic is now working, all other egress traffic from all
 
 ### 6. Allow egress traffic to nginx
 
-Run the following to create a `NetworkPolicy` which allows egress traffic from any pods in the `advanced-policy-demo` namespace to pods with labels matching `run: nginx` in the same namespace.
+Run the following to create a `NetworkPolicy` which allows egress traffic from any pods in the `advanced-policy-demo` namespace to pods with labels matching `app: nginx` in the same namespace.
 
 ```bash
 kubectl create -f - <<EOF
@@ -303,7 +302,7 @@ spec:
   - to:
     - podSelector:
         matchLabels:
-          run: nginx
+          app: nginx
 EOF
 ```
 
@@ -339,7 +338,7 @@ wget: download timed out
 ```
 {: .no-select-button}
 
-Access to `google.com` times out because it can resolve DNS but has no egress access to anything other than pods with labels matching `run: nginx` in the `advanced-policy-demo` namespace.
+Access to `google.com` times out because it can resolve DNS but has no egress access to anything other than pods with labels matching `app: nginx` in the `advanced-policy-demo` namespace.
 
 ## 7. Clean up namespace
 

@@ -47,7 +47,7 @@ Zero Trust Networks rely on network access controls with specific requirements:
 
 **Requirement 2**: Establishing the identity of a remote endpoint is always based on multiple criteria including strong cryptographic proofs of identity. In particular, network-level identifiers like IP address and port are not sufficient on their own as they can be spoofed by a hostile network.
 
-**Requirement 3**: All expected and allowed network flows are explicitly whitelisted. Any connection not explicitly whitelisted is denied.
+**Requirement 3**: All expected and allowed network flows are explicitly allowed. Any connection not explicitly allowed is denied.
 
 **Requirement 4**: Compromised workloads must not be able to circumvent policy enforcement.
 
@@ -68,9 +68,9 @@ These multiple enforcement points establish the identity of the remote endpoint 
 
 ##### {{site.prodname}} policy store
 
-The policies in the {{site.prodname}} data store encode the whitelist of allowed flows (Requirement 3).
+The policies in the {{site.prodname}} data store encode the allow-list of allowed flows (Requirement 3).
 
-{{site.prodname}} network policy is designed to be flexible to fit many different security paradigms, so it can express, for example, both Zero Trust Network-style whitelists as well as legacy paradigms like zones. You can even layer both of these approaches on top of one another without creating a maintenance mess by composing multiple policy documents.
+{{site.prodname}} network policy is designed to be flexible to fit many different security paradigms, so it can express, for example, both Zero Trust Network-style allow-lists as well as legacy paradigms like zones. You can even layer both of these approaches on top of one another without creating a maintenance mess by composing multiple policy documents.
 
 The How To section of this document explains how to write policy specifically in the style of Zero Trust Networks. Conceptually, you will begin by denying all network flows by default, then add rules that allow the specific expected flows that make up your application. When you finish, only legitimate application flows are allowed and all others are denied.
 
@@ -100,7 +100,7 @@ At a high level, you will undertake the following steps to establish a Zero Trus
 1. Install {{site.prodname}}.
 1. Install Istio and enable {{site.prodname}} integration.
 1. Establish workload identity by using Service Accounts.
-1. Write initial whitelist policies for each service.
+1. Write initial allow-list policies for each service.
 
 After your Zero Trust Network is established, you will need to maintain it. 
 
@@ -110,21 +110,21 @@ Follow the [install instructions]({{ site.baseurl }}/getting-started/kubernetes/
 
 #### Install Istio and enable {{site.prodname}} integration
 
-Follow the instructions to [Enable application layer policy[Enable application layer policy]({{site.baseurl}}/security/app-layer-policy).
+Follow the instructions to [Enable application layer policy]({{site.baseurl}}/security/app-layer-policy).
 
-The instructions include a “demo” install of Istio for quickly testing out functionality. For a production installation to support a Zero Trust Network, you should instead follow the official Istio install instructions. Be sure to enable mutually authenticated TLS (mTLS) in your install options by setting **global.mtls.enabled to true**.
+The instructions include a “demo” install of Istio for quickly testing out functionality. For a production installation to support a Zero Trust Network, you should instead follow the official Istio install instructions. Be sure to enable mutually authenticated TLS (mTLS) in your install options by setting **global.mtls.enabled** to **true**.
 
 #### Establish workload identity by using Service Accounts
 
 Our eventual goal is to write access control policy that authorizes individual expected network flows. We want these flows to be scoped as tightly as practical.  In a {{site.prodname}} Zero Trust Network, the cryptographic identities are Kubernetes Service Accounts. Istio handles crypto-key management for you so that each workload can assert its Service Account identity in a secure manner.
 
-You have some flexibility in how you assign identities for the purpose of your Zero Trust Network policy. The right balance for most people is to use a unique identity for each Kubernetes Service in your application (or Deployment if you have workloads that don’t accept any incoming connections). Assigning identity to entire applications or namespaces is probably too granular, since applications usually consist of multiple services (or dozens of microservices) with different actual access needs.
+You have some flexibility in how you assign identities for the purpose of your Zero Trust Network policy. The right balance for most people is to use a unique identity for each Kubernetes Service in your application (or Deployment if you have workloads that don’t accept any incoming connections). Assigning identity to entire applications or namespaces is probably too coarse, since applications usually consist of multiple services (or dozens of microservices) with different actual access needs.
 
 You should assign unique identities to microservices even if you happen to know that they access the same things. Your policy will be more readable if the identities correspond to logical components of the application. You can grant them the same permissions easily, and if in the future they need different permissions it will be easier to handle.
 
 After you decide on the set of identities you require, create the Kubernetes Service Accounts, then modify your application configuration so that each Deployment, ReplicaSet, StatefulSet, etc. uses the correct Service Account.
 
-#### Write initial whitelist policies for each service
+#### Write initial allow-list policies for each service
 
 The final step to establishing your Zero Trust Network is to write the policies for each service in your network. The [Application Layer Policy Tutorial]({{ site.baseurl }}/security/tutorials/app-layer-policy/enforce-policy-istio) gives an overview of setting up policies that allow traffic based on Service Account identity.
 
@@ -133,7 +133,7 @@ For each service you will:
 1. Determine the full set of other identities that should access it.
 1. Add rules to allow each of those flows.
 
-After a pod is selected by at least one policy, any traffic not explicitly allowed is denied. This implements the Zero Trust Network paradigm of an explicit whitelist of expected flows.
+After a pod is selected by at least one policy, any traffic not explicitly allowed is denied. This implements the Zero Trust Network paradigm of an explicit allow-list of expected flows.
 
 #### Determine the full set of identities that should access each service
 
@@ -164,7 +164,7 @@ When determining flows from a running application instance, be sure to review ea
 
 #### Write policies with allow rules for each flow
 
-After you have the set of expected flows for each service, you are ready to write {{site.prodname}} network policy to whitelist those flows and deny all others.
+After you have the set of expected flows for each service, you are ready to write {{site.prodname}} network policy to allow-list those flows and deny all others.
 
 Returning to the example flow graph in the previous section, let’s write the policy for the post service. For the purpose of this example, assume all the services in the application run in a Kubernetes Namespace called microblog.  We see from the flow graph that the post service is accessed by the api and search services.
 
@@ -172,7 +172,7 @@ Returning to the example flow graph in the previous section, let’s write the p
 apiVersion: projectcalico.org/v3
 kind: NetworkPolicy
 metadata:
-  name: post-whitelist
+  name: post-allow-list
   namespace: microblog
 spec:
   selector: svc == 'post'
@@ -180,8 +180,8 @@ spec:
   - Ingress
   ingress:
   - action: Allow
-    source
-      serviceAccount:
+    source:
+      serviceAccounts:
         names: ["api", "search"]
       namespaceSelector: app == 'microblog'
     protocol: TCP
@@ -194,13 +194,12 @@ Things to notice in this example:
 
 - **Namespace**
   
-  Create a {{site.prodname}} NetworkPolicy in the same **namespace** as the service for the whitelist (microblog).
+  Create a {{site.prodname}} NetworkPolicy in the same **namespace** as the service for the allow-list (microblog).
 
   <pre>
   metadata:
-    name: post-whitelist
+    name: post-allow-list
     namespace: microblog
-  spec:
   </pre>
   {:.no-select-button}
 
@@ -220,7 +219,7 @@ Things to notice in this example:
 
   <pre>
   source:
-    serviceAccount:
+    serviceAccounts:
       names: ["api", "search"]
   </pre> 
   {:.no-select-button} 
@@ -230,9 +229,10 @@ Things to notice in this example:
   Service Accounts are uniquely identified by name and namespace. Use a **namespaceSelector** to fully-qualify the Service Accounts you are allowing, so if names are repeated in other namespaces they will not be granted access to the service.
 
   <pre>
-  source
-    serviceAccount:
-    namespacSelector: app == 'microblog'
+  source:
+    serviceAccounts:
+      names: ["api", "search"]
+    namespaceSelector: app == 'microblog'
   </pre>
   {:.no-select-button}
 
@@ -247,17 +247,17 @@ Things to notice in this example:
   </pre>
   {:.no-select-button}
 
-The above example lists the identities that need access to the post service by name. This style of whitelist works best when the developers responsible for a service have explicit knowledge of who needs access to their service.
+The above example lists the identities that need access to the post service by name. This style of allow-list works best when the developers responsible for a service have explicit knowledge of who needs access to their service.
 
 However, some development teams don’t explicitly know who needs access to their service, and don’t need to know. The service might be very generic and used by lots of different applications across the organization---for example: a logging service. Instead of listing the Service Accounts that get access to the service explicitly one-by-one, you can use a label selector that selects on Service Accounts.
 
-In the following example, we have changed the **serviceAccount** clause. Instead of a name, we use a label selector. The **selector: svc-post = access** label grants access to the post service. 
+In the following example, we have changed the **serviceAccount** clause. Instead of a name, we use a label selector. The **selector: svc-post == access** label grants access to the post service. 
 
 ```yaml
 apiVersion: projectcalico.org/v3
 kind: NetworkPolicy
 metadata:
-  name: post-whitelist
+  name: post-allow-list
   namespace: microblog
 spec:
   selector: svc == 'post'
@@ -265,8 +265,8 @@ spec:
   - Ingress
   ingress:
   - action: Allow
-    source
-      serviceAccount:
+    source:
+      serviceAccounts:
         selector: svc-post == 'access'
       namespaceSelector: app == 'microblog'
     protocol: TCP
@@ -274,13 +274,13 @@ spec:
       ports:
       - 8080
 ```
-Define labels that indicate permission to access services in the cluster. Then, modify the ServiceAccounts for each identity that needs access. In this example, we would add the label **svc-post = access** to the **api** and **search** Service Accounts.
+Define labels that indicate permission to access services in the cluster. Then, modify the ServiceAccounts for each identity that needs access. In this example, we would add the label **svc-post == access** to the **api** and **search** Service Accounts.
 
 Whether you choose to explicitly name the Service Accounts or use a label selector is up to you, and you can make a different choice for different services. Using explicit names works best for services that have a small number of clients, or when you want the service owner to be involved in the decision to allow something new to access the service. If some other team wants to get access to the service, they call up the owner of the service and ask them to grant access. In contrast, using labels is good when you want more decentralized control. The service owner defines the labels that grant access to the service and trusts the other development teams to label their Service Accounts when they need access. 
 
 #### Maintain your zero trust network 
 
-The whitelist policies are tightly scoped to the exact expected flows in the applications running in the Zero Trust Network. If these applications are under active development the expected flows will change, and policy, therefore, also needs to change. Maintaining a Zero Trust Network means instituting a change control policy that ensures:
+The allow-list policies are tightly scoped to the exact expected flows in the applications running in the Zero Trust Network. If these applications are under active development the expected flows will change, and policy, therefore, also needs to change. Maintaining a Zero Trust Network means instituting a change control policy that ensures:
 
 - Policies are up to date with application changes
 - Policies are tightly scoped to expected flows
@@ -300,7 +300,7 @@ Developers, DevOps, and/or Operators make changes to applications primarily by m
 
 What you should do is include the NetworkPolicy as part of those deployment config artifacts. In some organizations, these artifacts are in the same repo as the source code, and in others they reside in a separate repo, but the principle is the same: you manage policy change control as commits to the deployment configuration. This config then works its way through the delivery pipeline and is finally applied to the running Kubernetes cluster.
 
-Your developers will likely require training and support from the security team in order to get policy correct at first. Many trained developers are not used to thinking about network security. The logical controls expressed in network policy are simple compared with the flexibility they have in source code, so the primary support they will need from you is around the proper security mindset and principles of Zero Trust Networks. You can apply a default deny policy in your cluster to ensure that developers can’t simply forget to apply their own whitelisted policy.
+Your developers will likely require training and support from the security team in order to get policy correct at first. Many trained developers are not used to thinking about network security. The logical controls expressed in network policy are simple compared with the flexibility they have in source code, so the primary support they will need from you is around the proper security mindset and principles of Zero Trust Networks. You can apply a default deny policy in your cluster to ensure that developers can’t simply forget to apply their own allow-listed policy.
 
 You may wish to review every security policy change request (aka pull request in git workflows) at first. If you do, then be sure you have time allotted, and consider rolling out Zero Trust Network policies incrementally, one application or service at a time. As development teams gain confidence you can pull back and have them do their own reviews. Security professionals can do spot checks on change requests or entire policies to ensure quality remains high in the long term.
 

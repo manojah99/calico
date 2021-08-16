@@ -68,6 +68,8 @@ metadata:
   name: allow-tcp-port-6379
 ```
 
+Because global network policies use **kind: GlobalNetworkPolicy**, they are grouped seperately from **kind: NetworkPolicy**. For example, global network policies will not be returned from `calicoctl get networkpolicy`, and are rather returned from `calicoctl get globalnetworkpolicy`.
+
 #### kubectl vs calicoctl
 
 Calico network policies and Calico global network policies are applied using calicoctl. Syntax is similar to Kubernetes, but there a few differences. For help, see [calicoctl user reference]({{ site.baseurl }}/reference/calicoctl/overview).
@@ -97,6 +99,11 @@ The Kubernetes network policy specification defines the following behavior:
 
 For compatibility with Kubernetes, **Calico network policy** follows the same behavior for Kubernetes pods.  For other endpoint types (VMs, host interfaces), Calico network policy is default deny. That is, only traffic specifically allowed by network policy is allowed, even if no network policies apply to the endpoint.
 
+### Before you begin
+
+`calicoctl` must be **installed** and **configured** before use. `calicoctl` will use etcd as the datastore by default, but many {{site.prodname}} installation manifests configure Kubernetes as the datastore. You can find more information on how to configure `calicoctl` in the following link:
+
+- [Configure `calicoctl`]({{ site.baseurl }}/getting-started/clis/calicoctl/configure/overview)
 
 ### How to
 
@@ -208,7 +215,7 @@ spec:
     - action: Deny
       destination:
         nets:
-        - 1.2.3.4/24
+        - 1.2.3.0/24
 ```
 
 #### Apply network policies in specific order
@@ -270,3 +277,4 @@ Spec:
 - For details on the calicoctl command line tool, see [calicoctl user reference]({{ site.baseurl }}/reference/calicoctl/overview)
 - {% include enterprise_icon.html %}[Network visibility with Calico Enterprise]({{ site.baseurl }}/security/calico-enterprise/network-visibility)
 - {% include enterprise_icon.html %}[Advanced compliance controls with Calico Enterprise]({{ site.baseurl }}/security/calico-enterprise/compliance)
+

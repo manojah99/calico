@@ -11,9 +11,8 @@ The doc contribution process works as follows.
 1. Fork the [Project Calico repo](https://github.com/projectcalico/calico).
 1. Create a branch in your fork off of the master branch.
 1. Give your branch a short but descriptive name.
-1. Make your changes in the `master` folder.
-1. [Build the site locally to make sure it renders as expected](#building-the-doc-site-locally).
-1. [Check for broken links](#checking-for-broken-links).
+1. Preview your changes to make sure they render as expected. You can either [build the site locally](#building-the-doc-site-locally) or go directly to the "submit a pull request" to [build the site with the Project Calico CI/CD system](#previewing-the-changes-from-cicd).
+1. Check for broken links. You can either [check for broken links](#checking-for-broken-links) in your local environment or submit a pull request and use the output of the Semaphore job.
 1. Submit a pull request (PR) against the master branch of the [Project Calico repo](https://github.com/projectcalico/calico).
 1. If you haven't already signed our contributer agreement, GitHub will prompt you to do so (required).
 1. Request a review from one or more Calico maintainers.
@@ -28,8 +27,9 @@ The doc contribution process works as follows.
 
 We also encourage you to review [Doc site organization](#doc-site-organization), [Organizational changes](#organizational-changes), [Link syntax](#link-syntax), and [RELEASING.md](RELEASING.md) for additional information.
 
+## Previewing your changes
 
-## Building the doc site locally
+### Building the doc site locally
 
 We use GitHub Pages and Jekyll to serve and build our site. While there are [several ways to build the site locally](https://help.github.com/articles/setting-up-your-github-pages-site-locally-with-jekyll/), we recommend using our Docker image and the Makefile in the root of the repo. These will allow you to build the site with a single command.
 
@@ -43,11 +43,15 @@ make serve
 
 Once the build completes, it returns a URL as the value of `Server address:`. Copy and paste this URL into your browser to view the site.
 
-> **Note**: To view the changes that you've made in the master branch, select **nightly** from the **Version** list box.
+> **Note**: To view the changes that you've made in the master branch, select **nightly** from the **Releases** page.
 
 > **Pro tip**: Jekyll can take a while to render every page. To speed up builds, a supplemental `_config_dev.yml` exists which excludes all directories except `master`. You can include it in your builds as follows `jekyll serve --config _config.yml,_config_dev.yml`. Alternatively, you can pass enable it in `make` using the following environment variable `DEV=true make serve`.
 
+### Previewing the changes from CI/CD
 
+The Project Calico CI/CD system will generate a site preview automatically with every docs change. An automated response to the PR will indicate "Deploy preview for calico ready!" and provide a link to the preview. If your change is minor and you are not a regular contributor to the project, this method may be easier than building the doc site locally.
+
+**Note** To view the changes you've made to the master branch, select **nightly** from the **Releases** page. 
 
 ## Checking for broken links
 
@@ -62,7 +66,6 @@ make htmlproofer
 The submission of a PR kicks off a continuous integration process which includes a `make htmlproofer` command. Any errors from `htmlproofer` will cause your PR to fail the continuous integration test, so it's best to run this locally before submitting your PR.
 
 However, you can also run this after submitting your PR and experiencing an `htmlproofer` failure from the Semaphore job.
-
 
 ## How to quickly apply changes in master to a previous release
 
@@ -87,43 +90,48 @@ Let's say there's a single commit that makes changes to the `master` directory w
 
 ## Doc site organization
 
-### Overview
-
-The docs (currently) are split into four main sections.
+The docs are divided into the following sections:
 
 - [Introduction](#introduction)
-- [Getting started](#getting-started)
-- [Usage](#usage)
+- [Install](#install)
+- [Operations](#operations)
+- [Networking](#networking)
+- [Security](#security)
 - [Reference](#reference)
+
+Except for Introduction and Reference, content should be tasked-based. All top-level titles in topics should use an action verb (e.g. configure, enable, modify) with initial caps. For example:
+
+- Configure BGP peers
+- Enable overlay networking
+- Troubleshoot Calico
+- Use calicoctl in a Kubernetes deployment
+- Configure egress policy in Kubernetes
+
+Detailed description of components or tabulated configuration information should go in the [Reference](#reference) section.
 
 ### Introduction
 
-Landing page for new users covering Calico's purpose and high-level topics.
+This page describes Calico and the primary reasons for using it.
 
-### Getting started
+### Install
 
-This should be where new users go. It includes quick-start guides, some basic tutorials to show off Calico's capabilities, and links to more advanced topics once users are comfortable with the basics.
+Calico can be installed in many different deployments including on-premises and cloud providers. This section includes how to install a standalone Calico cluster for workloads, and how to install Calico on non-cluster hosts. This section covers steps to an "up and running" state. Any task beyond "up and running" should be added to other tabs. 
 
-Each orchestrator has a landing page that is targeted at people who are coming to see Calico for the first time. It's a transition from the "marketing" type material (why is Calico great) to some quick commands people can run to see it firsthand, and then funnels people off to the Usage section for more details.
+### Operations
 
-### Usage
+This section contains post-install, task-based content.  
 
-This section contains task-based information. All top-level titles in this section should start with a gerund. Each topic should include why you want to perform the task, a goal, and a set of steps you can follow to achieve it.
+### Networking
 
-Examples:
+This section contains task-based content for networking using the Calico CNI and Calico IPAM.
 
-- Configuring BGP peers
-- Enabling IP-in-IP in AWS
-- Troubleshooting Calico
-- Using calicoctl in a Kubernetes deployment
-- Configuring egress policy in Kubernetes
+### Security
 
-Do not include detailed description of components or tabulated
-configuration information in this section. This type of content should be located in the [Reference](#reference) section.
+This section contains task-based content for securing Calico components, workloads, and non-cluster hosts using Calico network policy.
 
 ### Reference
 
-These docs contain complete reference information for Calico. If there's a configuration option you're looking for, it goes here in one of the per-component references. Not every option has a "how to" guide, but has enough description. The caveats and considerations when enabling options should be listed here.
+This section contain reference content including full details of APIs and Resources. Add configuration options in one of the per-component references, and list any caveats and considerations when enabling options.
 
 Examples:
 
@@ -131,18 +139,32 @@ Examples:
 - `calicoctl` help text
 - Calico API schema reference (policy, ip pool, etcd)
 
-
 ## Organizational changes
 
 ### Creating new pages
 
-- To create a top level splash page for a URL path, simply name the file `index.md`.
+- To create a top level splash page for a URL path, name the file `index.md`. 
 
+  If the index.md has child topics, copy the following content and update. All name/keys should be lowercase for consistency. Descriptions should be approximately 50-160 words.
+
+  ```
+  ---
+  title: Install Calico
+  description: Install Calico on nodes and hosts for popular orchestrators, and install the calicoctl command line interface (CLI) tool. 
+  canonical_url: '/getting-started/index'
+  show_read_time: false
+  show_toc: false
+  ---
+
+  {{ page.description }}
+
+  {% capture content %}{% include index.html %}{% endcapture %}
+  {{ content | replace: "    ", "" }}
+  ```
 
 - [Add the new page to the side navigation bar](#linking-content).
 
 - Within the copies of the page in the `master` and previous release directories, add a `canonical_url` line below the `title` line in the metadata of the page. This should contain the absolute path to the page in the current latest directory. Example: `canonical_url: 'https://docs.projectcalico.org/v3.0/getting-started/kubernetes/'`. For more discussion of canonical URLs, refer to the [Canonical URLs](#canonical-urls) section.
-
 
 ### Deleting or renaming pages
 
@@ -222,6 +244,18 @@ Will render as:
 
 ```
 kubectl apply -f `https://docs.tigera.io/v3.4/manifests/calicoctl.yaml`
+```
+### Syntax for links outside the doc site
+
+Use the following syntax for any link that takes the user outside the docs site; so the link opens in a separate window.
+
+```
+{% include open-new-window.html text='NAME' url='URL' %}
+```
+**Example**
+
+```
+{% include open-new-window.html text='Create an AKS cluster and enable network policy' url='https://docs.microsoft.com/en-us/azure/aks/use-network-policies' %}
 ```
 
 ### Case sensitivity

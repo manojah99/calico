@@ -1,5 +1,5 @@
 ---
-title: Schedule to well-known nodes
+title: Schedule Typha for scaling to well-known nodes
 description: Configure the Calico Typha TCP port.
 canonical_url: '/security/comms/reduce-nodes'
 ---
@@ -14,4 +14,4 @@ pod networking begins and uses host networking instead. It opens a port on the n
 scheduled on. By default, it can get scheduled to any node and opens TCP 5473.
 
 To reduce the number of nodes with the port open to a subset of the
-total, consider [scheduling Typha to well-known nodes](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/).
+total, consider [scheduling Typha to well-known nodes](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/){:target="_blank"}.

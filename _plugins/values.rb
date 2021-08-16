@@ -7,6 +7,20 @@ def gen_values(versions, imageNames, imageRegistry, chart)
       enabled: true
       kubernetesProvider: ""
 
+    apiServer:
+      enabled: true
+
+    certs:
+      node:
+        key:
+        cert:
+        commonName:
+      typha:
+        key:
+        cert:
+        commonName:
+        caBundle:
+
     # Configuration for the tigera operator
     tigeraOperator:
       image: #{versions.fetch("tigera-operator").image}
@@ -32,6 +46,9 @@ def gen_values(versions, imageNames, imageRegistry, chart)
     network: calico
     # Sets the ipam. Can be 'calico-ipam' or 'host-local'
     ipam: calico-ipam
+
+    # Sets the mtu.
+    mtu: "1440"
 
     node:
       image: #{imageRegistry}#{imageNames.fetch("node")}

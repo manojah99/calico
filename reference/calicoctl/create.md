@@ -24,7 +24,7 @@ command.
 
 ```
 Usage:
-  calicoctl create --filename=<FILENAME> [--skip-exists] [--config=<CONFIG>] [--namespace=<NS>]
+  calicoctl create --filename=<FILENAME> [--recursive] [--skip-empty] [--skip-exists] [--config=<CONFIG>] [--namespace=<NS>]
 
 Examples:
   # Create a policy using the data in policy.yaml.
@@ -36,7 +36,12 @@ Examples:
 Options:
   -h --help                 Show this screen.
   -f --filename=<FILENAME>  Filename to use to create the resource.  If set to
-                            "-" loads from stdin.
+                            "-" loads from stdin. If filename is a directory, this command is
+                            invoked for each .json .yaml and .yml file within that directory,
+                            terminating after the first failure.
+  -R --recursive            Process the filename specified in -f or --filename recursively.
+     --skip-empty           Do not error if any files or directory specified using -f or --filename contain no
+                            data.
      --skip-exists          Skip over and treat as successful any attempts to
                             create an entry that already exists.
   -c --config=<CONFIG>      Path to the file containing connection
@@ -45,6 +50,7 @@ Options:
   -n --namespace=<NS>       Namespace of the resource.
                             Only applicable to NetworkPolicy, NetworkSet, and WorkloadEndpoint.
                             Uses the default namespace if not specified.
+  --context=<context>       The name of the kubeconfig context to use.
 
 Description:
   The create command is used to create a set of resources by filename or stdin.
@@ -96,7 +102,7 @@ Description:
 1. Create the same set of resources reading from stdin.
 
    ```bash
-   cat resources.yaml | calicoctl apply -f -
+   cat resources.yaml | calicoctl create -f -
    ```
 
    Results indicate failure because the first resource (in this case a Profile)
@@ -131,7 +137,7 @@ Description:
 
 ## See also
 
--  [Installing calicoctl]({{ site.baseurl }}/getting-started/calicoctl/install)
+-  [Installing calicoctl]({{ site.baseurl }}/getting-started/clis/calicoctl/install)
 -  [Resources]({{ site.baseurl }}/reference/resources/overview) for details on all valid resources, including file format
    and schema
 -  [NetworkPolicy]({{ site.baseurl }}/reference/resources/networkpolicy) for details on the {{site.prodname}} selector-based policy model

@@ -14,6 +14,8 @@ section:
       path: /security/calico-network-policy
     - title: Get started with Calico network policy for OpenStack
       path: /security/network-policy-openstack
+    - title: Calico policy tutorial
+      path: /security/tutorials/calico-policy
   - title: Kubernetes policy
     path: /security/kubernetes-policy
     section:
@@ -25,8 +27,8 @@ section:
       path: /security/tutorials/kubernetes-policy-basic
     - title: Kubernetes policy, advanced tutorial
       path: /security/tutorials/kubernetes-policy-advanced
-  - title: Enable default deny 
-    path: /security/kubernetes-default-deny    
+  - title: Enable default deny
+    path: /security/kubernetes-default-deny
 - title: Policy rules
   path: /security/policy-rules
   section:
@@ -34,6 +36,8 @@ section:
     path: /security/policy-rules-overview
   - title: Namespace rules
     path: /security/namespace-policy
+  - title: Service rules
+    path: /security/service-policy
   - title: Service accounts rules
     path: /security/service-accounts
   - title: External IPs or networks rules
@@ -45,6 +49,8 @@ section:
   section:
   - title: Protect hosts
     path: /security/protect-hosts
+  - title: Protect Kubernetes nodes
+    path: /security/kubernetes-nodes
   - title: Protect host tutorial
     path: /security/tutorials/protect-hosts
   - title: Apply policy to host forwarded traffic
@@ -59,10 +65,8 @@ section:
 - title: Policy for Istio
   path: /security/istio
   section:
-  - title: Enable network policy for Istio
+  - title: Enforce network policy for Istio
     path: /security/app-layer-policy
-  - title: Enforce network policy using Istio
-    path: /security/enforce-policy-istio
   - title: Use HTTP methods and paths in policy rules
     path: /security/http-methods
   - title: Enforce network policy using Istio tutorial
@@ -74,23 +78,27 @@ section:
     path: /security/high-connection-workloads
   - title: Defend against DoS attacks
     path: /security/defend-dos-attack
+- title: Encrypt in-cluster pod traffic
+  path: /security/encrypt-cluster-pod-traffic
 - title: Secure Calico component communications
   path: /security/comms/
   section:
   - title: Configure encryption and authentication
     path: /security/comms/crypto-auth
-  - title: Schedule to well-known nodes
+  - title: Schedule Typha to well-known-nodes
     path: /security/comms/reduce-nodes
   - title: Secure Calico Prometheus endpoints
     path: /security/comms/secure-metrics
+  - title: Secure BGP sessions
+    path: /security/comms/secure-bgp
 - title: Calico Enterprise
   path: /security/calico-enterprise/
   section:
   - title: Network visibility
     path: /security/calico-enterprise/network-visibility
-  - title: Advanced egress access controls 
+  - title: Advanced egress access controls
     path: /security/calico-enterprise/egress-access-controls
-  - title: Advanced compliance controls 
+  - title: Advanced compliance controls
     path: /security/calico-enterprise/compliance
   - title: Federation
     path: /security/calico-enterprise/federation

@@ -7,9 +7,18 @@ canonical_url: '/maintenance/kubernetes-upgrade'
 ## About upgrading {{site.prodname}}
 
 This page describes how to upgrade to {{page.version}} from {{site.prodname}} v3.0 or later. The
-procedure varies by datastore type.
+procedure varies by datastore type and install method.
 
-- [Upgrading an installation that uses the Kubernetes API datastore](#upgrading-an-installation-that-uses-the-kubernetes-api-datastore)
+If you are using {{site.prodname}} in etcd mode on a Kubernetes cluster, we recommend upgrading to the Kubernetes API datastore [as discussed here]({{site.baseurl}}/maintenance/datastore-migration).
+
+If you have installed {{site.prodname}} using the `calico.yaml` manifest, we recommend upgrading to the {{site.prodname}} operator, [as discussed here]({{site.baseurl}}/maintenance/operator-migration).
+
+
+- [Upgrading an installation that was installed using Helm](#upgrading-an-installation-that-was-installed-using-helm)
+
+- [Upgrading an installation that uses the operator](#upgrading-an-installation-that-uses-the-operator)
+
+- [Upgrading an installation that uses manifests and the Kubernetes API datastore](#upgrading-an-installation-that-uses-manifests-and-the-kubernetes-api-datastore)
 
 - [Upgrading an installation that connects directly to an etcd datastore](#upgrading-an-installation-that-uses-an-etcd-datastore)
 
@@ -17,8 +26,29 @@ procedure varies by datastore type.
 > This may result in unexpected behavior and data.
 {: .alert .alert-danger}
 
+{% include content/hostendpoints-upgrade.md orch="Kubernetes" %}
 
-## Upgrading an installation that uses the Kubernetes API datastore
+## Upgrading an installation that was installed using helm
+1. Run the helm upgrade:
+   ```bash
+   helm upgrade {{site.prodname | downcase}} projectcalico/tigera-operator
+   ```
+
+## Upgrading an installation that uses the operator
+
+1. Download the {{page.version}} operator manifest.
+
+   ```bash
+   curl {{ "/manifests/tigera-operator.yaml" | absolute_url }} -O
+   ```
+
+1. Use the following command to initiate an upgrade.
+
+   ```bash
+   kubectl apply -f tigera-operator.yaml
+   ```
+
+## Upgrading an installation that uses manifests and the Kubernetes API datastore
 
 1. Download the {{page.version}} manifest that corresponds to your original installation method.
 
@@ -63,8 +93,8 @@ procedure varies by datastore type.
    ```
    {: .no-select-button}
 
-1. Remove any existing `calicoctl` instances, [install the new `calicoctl`](../getting-started/calicoctl/install)
-   and [configure it to connect to your datastore](../getting-started/calicoctl/configure/overview).
+1. Remove any existing `calicoctl` instances, [install the new `calicoctl`](../getting-started/clis/calicoctl/install)
+   and [configure it to connect to your datastore](../getting-started/clis/calicoctl/configure/overview).
 
 1. Use the following command to check the {{site.prodname}} version number.
 
@@ -76,6 +106,9 @@ procedure varies by datastore type.
 
 1. If you have [enable application layer policy]({{site.baseurl}}/security/app-layer-policy),
    follow [the instructions below](#upgrading-if-you-have-application-layer-policy-enabled) to complete your upgrade. Skip this if you are not using Istio with {{site.prodname}}.
+
+1. If you were upgrading from a version of Calico prior to v3.14 and followed the pre-upgrade steps for host endpoints above, review traffic logs from the temporary policy,
+   add any global network policies needed to allow traffic, and delete the temporary network policy **allow-all-upgrade**.
 
 1. Congratulations! You have upgraded to {{site.prodname}} {{page.version}}.
 
@@ -94,7 +127,7 @@ procedure varies by datastore type.
    curl {{ "/manifests/canal-etcd.yaml" | absolute_url }} -O
    ```
 
-   > **Note**: You must must manually apply the changes you made to the manifest
+   > **Note**: You must manually apply the changes you made to the manifest
    > during installation to the downloaded {{page.version}} manifest. At a minimum,
    > you must set the `etcd_endpoints` value.
    {: .alert .alert-info}
@@ -126,8 +159,8 @@ procedure varies by datastore type.
    {: .alert .alert-success}
 
 
-1. Remove any existing `calicoctl` instances, [install the new `calicoctl`](../getting-started/calicoctl/install)
-   and [configure it to connect to your datastore](../getting-started/calicoctl/configure/overview).
+1. Remove any existing `calicoctl` instances, [install the new `calicoctl`](../getting-started/clis/calicoctl/install)
+   and [configure it to connect to your datastore](../getting-started/clis/calicoctl/configure/overview).
 
 1. Use the following command to check the {{site.prodname}} version number.
 
@@ -139,6 +172,9 @@ procedure varies by datastore type.
 
 1. If you have [enabled application layer policy]({{site.baseurl}}/security/app-layer-policy),
    follow [the instructions below](#upgrading-if-you-have-application-layer-policy-enabled) to complete your upgrade. Skip this if you are not using Istio with {{site.prodname}}.
+
+1. If you were upgrading from a version of Calico prior to v3.14 and followed the pre-upgrade steps for host endpoints above, review traffic logs from the temporary policy,
+   add any global network policies needed to allow traffic, and delete the temporary network policy **allow-all-upgrade**.
 
 1. Congratulations! You have upgraded to {{site.prodname}} {{page.version}}.
 
@@ -160,3 +196,5 @@ take the following steps to upgrade the Dikastes sidecars running in your applic
 
 1. Once the new template is in place, newly created pods use the upgraded version of Dikastes. Perform a rolling update of each of your service deployments
    to get them on the new version of Dikastes.
+
+{% include content/auto-hostendpoints-migrate.md orch="Kubernetes" %}

@@ -1,11 +1,11 @@
 ---
-title: Configuring the Calico CNI plugins
+title: Configure the Calico CNI plugins
 description: Details for configuring the Calico CNI plugins.  
 canonical_url: '/reference/cni-plugin/configuration'
 ---
 
 The {{site.prodname}} CNI plugin is configured through the standard CNI
-[configuration mechanism](https://github.com/containernetworking/cni/blob/master/SPEC.md#network-configuration)
+[configuration mechanism](https://github.com/containernetworking/cni/blob/master/SPEC.md#network-configuration){:target="_blank"}
 
 A minimal configuration file that uses {{site.prodname}} for networking
 and IPAM looks like this
@@ -71,12 +71,17 @@ The following options are deprecated.
 
 ### Logging
 
-* Logging is always to `stderr`
-* Logging level can be controlled by setting `"log_level"` in the netconf. Allowed levels are
-  * `ERROR` - Only error logs are emitted.
-  * `WARNING` - the default.
-  * `INFO` - Enables some additional logging from the CNI plugin.
-  * `DEBUG` - Enables lots of debug logging from both the CNI plugin and the underlying libcalico library.
+Logging is always to `stderr`. Logs are also written to `/var/log/calico/cni/cni.log` on each host by default.
+
+Logging can be configured using the following options in the netconf.
+
+| Option name          | Default                       | Description
+|----------------------|-------------------------------|-------------
+| `log_level`          | INFO                          | Logging level. Allowed levels are `ERROR`, `WARNING`, `INFO`, and `DEBUG`.
+| `log_file_path`      | `/var/log/calico/cni/cni.log` | Location on each host to write CNI log files to. Logging to file can be disabled by removing this option.
+| `log_file_max_size`  | 100                           | Max file size in MB log files can reach before they are rotated.
+| `log_file_max_age`   | 30                            | Max age in days that old log files will be kept on the host before they are removed.
+| `log_file_max_count` | 10                            | Max number of rotated log files allowed on the host before they are cleaned up.
 
 ```json
 {
@@ -84,6 +89,7 @@ The following options are deprecated.
     "cniVersion": "0.1.0",
     "type": "calico",
     "log_level": "DEBUG",
+    "log_file_path": "/var/log/calico/cni/cni.log",
     "ipam": {
         "type": "calico-ipam"
     }
@@ -97,7 +103,7 @@ When using {{site.prodname}} IPAM, the following flags determine what IP address
 * `assign_ipv4` (default: `"true"`)
 * `assign_ipv6` (default: `"false"`)
 
-A specific IP address can be chosen by using [`CNI_ARGS`](https://github.com/appc/cni/blob/master/SPEC.md#parameters) and setting `IP` to the desired value.
+A specific IP address can be chosen by using [`CNI_ARGS`](https://github.com/appc/cni/blob/master/SPEC.md#parameters){:target="_blank"} and setting `IP` to the desired value.
 
 By default, {{site.prodname}} IPAM will assign IP addresses from all the available IP pools.
 
@@ -166,7 +172,7 @@ When using the {{site.prodname}} CNI plugin with Kubernetes, the plugin must be 
 }
 ```
 
-As a convenience, the API location location can also be configured directly, e.g.
+As a convenience, the API location can also be configured directly, e.g.
 
 ```json
 {
@@ -264,7 +270,7 @@ When using `host-local` IPAM with the Kubernetes API datastore, you must configu
 
 #### Specifying IP pools on a per-namespace or per-pod basis
 
-In addition to specifying IP pools in the CNI config as discussed above, {{site.prodname}} IPAM supports specifying IP pools per-namespace or per-pod using the following [Kubernetes annotations](https://kubernetes.io/docs/user-guide/annotations/).
+In addition to specifying IP pools in the CNI config as discussed above, {{site.prodname}} IPAM supports specifying IP pools per-namespace or per-pod using the following [Kubernetes annotations](https://kubernetes.io/docs/user-guide/annotations/){:target="_blank"}.
 
 - `cni.projectcalico.org/ipv4pools`: A list of configured IPv4 Pools from which to choose an address for the pod.
 
@@ -300,7 +306,7 @@ If provided, these IP pools will override any IP pools specified in the CNI conf
 
 #### Requesting a specific IP address
 
-You can also request a specific IP address through [Kubernetes annotations](https://kubernetes.io/docs/user-guide/annotations/) with {{site.prodname}} IPAM.
+You can also request a specific IP address through [Kubernetes annotations](https://kubernetes.io/docs/user-guide/annotations/){:target="_blank"} with {{site.prodname}} IPAM.
 There are two annotations to request a specific IP address:
 
 - `cni.projectcalico.org/ipAddrs`: A list of IPv4 and/or IPv6 addresses to assign to the Pod. The requested IP addresses will be assigned from {{site.prodname}} IPAM and must exist within a configured IP pool.
@@ -350,7 +356,7 @@ There are two annotations to request a specific IP address:
 
 #### Requesting a floating IP
 
-You can request a floating IP address for a pod through [Kubernetes annotations](https://kubernetes.io/docs/user-guide/annotations/) with {{site.prodname}}.
+You can request a floating IP address for a pod through [Kubernetes annotations](https://kubernetes.io/docs/user-guide/annotations/){:target="_blank"} with {{site.prodname}}.
 
 > **Note**:
 > The specified address must belong to an IP Pool for advertisement to work properly.
@@ -424,9 +430,19 @@ for a full example.
 
 ### CNI network configuration lists
 
-The CNI 0.3.0 [spec](https://github.com/containernetworking/cni/blob/spec-v0.3.0/SPEC.md#network-configuration-lists) supports "chaining" multiple cni plugins together and {{site.prodname}} supports this as well. {{site.prodname}} enables the portmap plugin by default which is required to implement Kubernetes host port functionality. This can be disabled by removing the portmap section from the CNI network configuration in the {{site.prodname}} manifests.
+The CNI 0.3.0 [spec](https://github.com/containernetworking/cni/blob/spec-v0.3.0/SPEC.md#network-configuration-lists){:target="_blank"} supports "chaining" multiple CNI plugins together. {{site.prodname}} supports the following Kubernetes CNI plugins, which are enabled by default. Although chaining other CNI plugins may work, we support only the following tested CNI plugins. 
 
- ```json
+**Port mapping plugin**
+
+{{site.prodname}} is required to implement Kubernetes host port functionality and is enabled by default. 
+
+> **Note**: Be aware of the following {% include open-new-window.html text='portmap plugin CNI issue' url='https://github.com/containernetworking/cni/issues/605' %} where draining nodes
+> may take a long time with a cluster of 100+ nodes and 4000+ services.
+{: .alert .alert-info}
+
+To disable it, remove the portmap section from the CNI network configuration in the {{site.prodname}} manifests. 
+
+```json
         {
           "type": "portmap",
           "snat": true,
@@ -435,10 +451,30 @@ The CNI 0.3.0 [spec](https://github.com/containernetworking/cni/blob/spec-v0.3.0
 ```
 {: .no-select-button}
 
-> **Note**: A CNI issue exists with the portmap plugin where draining nodes
-> may take a long time with a cluster of 100+ nodes and 4000+ services.
-> See https://github.com/containernetworking/cni/issues/605
-{: .alert .alert-info}
+**Traffic shaping plugin**
+
+The {% include open-new-window.html text='traffic shaping Kubernetes CNI plugin' url='https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/' %} supports pod ingress and egress traffic shaping. This bandwidth management technique delays the flow of certain types of network packets to ensure network performance for higher priority applications. It is enabled by default. 
+
+You can add the `kubernetes.io/ingress-bandwidth` and `kubernetes.io/egress-bandwidth` annotations to your pod. For example, the following sets a 1 megabit-per-second connection for ingress and egress traffic.
+
+```bash
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    kubernetes.io/ingress-bandwidth: 1M
+    kubernetes.io/egress-bandwidth: 1M
+...
+```
+To disable it, remove the bandwidth section from the the CNI network configuration in the {{site.prodname}} manifests.
+
+```json
+        { 
+          "type": "bandwidth",
+          "capabilities": {"bandwidth": true}
+        }
+```   
+{: .no-select-button}     
 
 ### Order of precedence
 

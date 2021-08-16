@@ -22,7 +22,7 @@ policy that is automatically rendered into distributed firewall rules
 across a cluster of containers, VMs, and/or servers.
 
 For a more detailed discussion of this topic, see our blog post at
-[Why Calico?](https://www.projectcalico.org/why-calico/).
+[Why Calico?](https://www.projectcalico.org/why-calico/){:target="_blank"}.
 
 ## Does {{site.prodname}} work with IPv6?
 
@@ -106,7 +106,7 @@ cali\* interfaces.
 
 ## Can I prevent my Kubernetes pods from initiating outgoing connections?
 
-Yes! The Kubernetes [`NetworkPolicy`](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+Yes! The Kubernetes [`NetworkPolicy`](https://kubernetes.io/docs/concepts/services-networking/network-policies/){:target="_blank"}
 API added support for egress policies in v1.8. You can also use `calicoctl`
 to configure egress policy to prevent Kubernetes pods from initiating outgoing
 connections based on the full set of supported {{site.prodname}} policy primitives
@@ -308,7 +308,7 @@ If this describes your infrastructure,
 what to do. Otherwise, if you have a layer 3 (IP) fabric, then there are
 detailed datacenter networking recommendations given
 in [{{site.prodname}} over IP fabrics]({{ site.baseurl }}/reference/architecture/design/l3-interconnect-fabric).
-We'd also encourage you to [get in touch](https://www.projectcalico.org/contact/)
+We'd also encourage you to [get in touch](https://www.projectcalico.org/contact/){:target="_blank"}
 to discuss your environment.
 
 ### How can I enable NAT for outgoing traffic from containers with private IP addresses?
@@ -397,7 +397,7 @@ Refer to the appropriate guide for your orchestration system for details on how 
 
 ### Can I run {{site.prodname}} in a public cloud environment?
 
-Yes.  If you are running in a public cloud that doesn't allow either L3 peering or L2 connectivity between {{site.prodname}} hosts then you can enable IP-in-IP in your {{site.prodname}} IP pool:
+Yes. If you are running in a public cloud that doesn't allow either L3 peering or L2 connectivity between {{site.prodname}} hosts then you can enable IP-in-IP in your {{site.prodname}} IP pool:
 
 ```bash
 cat <<EOF | calicoctl apply -f -
@@ -414,7 +414,9 @@ EOF
 
 {{site.prodname}} will then route traffic between {{site.prodname}} hosts using IP-in-IP.
 
-In AWS, you disable `Source/Dest. Check` instead of using IP-in-IP as long as all your instances are in the same subnet of your VPC.  This will provide the best performance.  You can disable this with the CLI, or right click the instance in the EC2 console, and select `Change Source/Dest. Check` from the `Networking` submenu.
+For best performance in AWS, you can disable [Source/Destination Check]({{ site.baseurl }}/reference/resources/felixconfig#spec) instead of using IP-in-IP or VXLAN; but only if all your instances are in the same subnet of your VPC. The setting must be `Disable` for the EC2 instance(s) to process traffic not matching the host interface IP address. This is also applicable if your cluster is spread across multiple subnets. If your cluster traffic crosses subnets, set `ipipMode` (or `vxlanMode`) to `CrossSubnet` to reduce the encapsulation overhead. Check [configuring overlay networking]({{ site.baseurl }}/networking/vxlan-ipip) for the details.
+
+You can disable Source/Destination Check using [Felix configuration]({{ site.baseurl }}/reference/resources/felixconfig), the AWS CLI, or the EC2 console. For example, using the AWS CLI:
 
 ```bash
 aws ec2 modify-instance-attribute --instance-id <INSTANCE_ID> --source-dest-check "{\"Value\": false}"
@@ -510,3 +512,10 @@ For example:
       type: DirectoryOrCreate
       path: /var/lib/kubelet/volumeplugins/nodeagent~uds
 ```
+
+## Can Calico do IP multicast?
+
+Calico is a routed L3 network where each pod gets a /32.  There's no broadcast domain for pods.
+That means that multicast doesn't just work as a side effect of broadcast.  To get multicast to
+work, the host needs to act as a multicast gateway of some kind.  Calico's architecture was designed
+to extend to cover that case but it's not part of the product as yet.

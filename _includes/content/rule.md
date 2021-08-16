@@ -1,3 +1,6 @@
+A single rule matches a set of packets and applies some action to them.  When multiple rules are specified, they
+are executed in order. 
+
 | Field       | Description                                | Accepted Values                                                   | Schema                    | Default    |
 |-------------|--------------------------------------------|-------------------------------------------------------------------|---------------------------|------------|
 | metadata    | Per-rule metadata.                         |                                                                   | [RuleMetadata](#rulemetadata) |        |
@@ -11,10 +14,12 @@
 | destination | Destination match parameters.              |                                                                   | [EntityRule](#entityrule) |            |
 | http        | Match HTTP request parameters. Application layer policy must be enabled to use this field. |                   | [HTTPMatch](#httpmatch)   |            |
 
-An `action` of `Pass` will skip over the remaining policies and jump to the
+After a `Log` action, processing continues with the next rule; `Allow` and `Deny` are immediate
+and final and no further rules are processed.
+
+An `action` of `Pass` in a `NetworkPolicy` or `GlobalNetworkPolicy` will skip over the remaining policies and jump to the
 first [profile]({{ site.baseurl }}/reference/resources/profile) assigned to the endpoint, applying the policy configured in the
-profile; if there are no Profiles configured for the endpoint the default
-applied action is `Deny`.
+profile; if there are no Profiles configured for the endpoint the default applied action is `Deny`.
 
 #### RuleMetadata
 
@@ -37,7 +42,7 @@ metadata:
 {: .no-select-button}
 
 Annotations follow the
-[same rules as Kubernetes for valid syntax and character set](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set).
+[same rules as Kubernetes for valid syntax and character set](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#syntax-and-character-set){:target="_blank"}.
 
 On Linux with the iptables dataplane, rule annotations are rendered as comments in the form `-m comment --comment "<key>=<value>"` on the iptables rule(s) that correspond
 to the {{site.prodname}} rule.

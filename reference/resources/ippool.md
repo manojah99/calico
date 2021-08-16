@@ -65,7 +65,7 @@ For details on configuring IP-in-IP on your deployment, please refer to
 > **Note**: Setting `natOutgoing` is recommended on any IP Pool with `ipip` enabled.
 When `ipip` is enabled without `natOutgoing` routing between Workloads and
 Hosts running {{site.prodname}} is asymmetric and may cause traffic to be filtered due to
-[RPF](https://en.wikipedia.org/wiki/Reverse_path_forwarding) checks failing.
+[RPF](https://en.wikipedia.org/wiki/Reverse_path_forwarding){:target="_blank"} checks failing.
 {: .alert .alert-info}
 
 #### VXLAN
@@ -79,7 +79,7 @@ determined when running the `{{site.nodecontainer}}` service).
 > **Note**: Setting `natOutgoing` is recommended on any IP Pool with `vxlan` enabled.
 When `vxlan` is enabled without `natOutgoing` routing between Workloads and
 Hosts running {{site.prodname}} is asymmetric and may cause traffic to be filtered due to
-[RPF](https://en.wikipedia.org/wiki/Reverse_path_forwarding) checks failing.
+[RPF](https://en.wikipedia.org/wiki/Reverse_path_forwarding){:target="_blank"} checks failing.
 {: .alert .alert-info}
 
 #### Block sizes
@@ -92,15 +92,18 @@ Reducing the block size from the default (e.g., using `28` for IPv4 to give 16 a
 
 #### Node Selector
 
-{% include content/selectors.md %}
-
 For details on configuring IP pool node selectors, please read the
 [Assign IP addresses based on topology guide.]({{ site.baseurl }}/networking/assign-ip-addresses-topology).
 
-> **Note**: The pool's `disabled` field takes higher precedence than
-> `nodeSelector`. This means that {{site.prodname}} IPAM will not allocate any
-> IPs from a disabled pool even if it selects the node that it is on.
-{: .alert .alert-info}
+> **Tip**: To prevent an IP pool from being used automatically by {{site.prodname}} IPAM, while still allowing
+> it to be used manually for static assignments, set the `IPPool`'s `nodeSelector` to `!all()`. Since the selector 
+> matches no nodes, the IPPool will not be used automatically and, unlike setting `disabled: true`, it can still be
+> used for manual assignments.
+{: .alert .alert-success}
+
+##### Selector reference
+
+{% include content/selectors.md %}
 
 ### Supported operations
 

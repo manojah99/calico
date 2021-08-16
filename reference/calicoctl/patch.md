@@ -38,6 +38,7 @@ Options:
   -n --namespace=<NS>        Namespace of the resource.
                              Only applicable to NetworkPolicy, NetworkSet, and WorkloadEndpoint.
                              Uses the default namespace if not specified.
+  --context=<context>        The name of the kubeconfig context to use.
 
 Description:
   The patch command is used to patch a specific resource by type and identifiers in place.
@@ -109,6 +110,6 @@ Description:
 
 ## See also
 
--  [Installing calicoctl]({{ site.baseurl }}/getting-started/calicoctl/install)
+-  [Installing calicoctl]({{ site.baseurl }}/getting-started/clis/calicoctl/install)
 -  [Resources]({{ site.baseurl }}/reference/resources/overview) for details on all valid resources, including file format
    and schema
