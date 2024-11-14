@@ -1,4 +1,4 @@
-FROM ubuntu:16.04 
+FROM ubuntu:xenial-20210114 
 MAINTAINER Casey Davenport <casey@tigera.io> 
 
 RUN apt-get update
